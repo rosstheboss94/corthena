@@ -5,7 +5,7 @@
 **Last updated:** 2026-07-05  
 **Related:** [System architecture](system-architecture.md), [Quality](quality.md), [ADR 0002](decisions/0002-go-tree-engine-and-artifacts.md), [ADR 0005](decisions/0005-go-hybrid-concurrency.md), [ADR 0006](decisions/0006-minimal-curated-go-dependencies.md)
 
-This document owns approved direct dependencies and their responsibilities. The initial compatibility baseline is Go 1.25.7. The selected toolchain and exact module versions belong in `go.mod` and `go.sum` once the compatibility gate passes.
+This document owns approved direct dependencies and their responsibilities. The initial compatibility baseline is Go 1.25.11. The selected toolchain and exact module versions belong in `go.mod` and `go.sum` once the compatibility gate passes.
 
 ## Dependency policy
 
@@ -20,7 +20,7 @@ This document owns approved direct dependencies and their responsibilities. The 
 
 | Responsibility | Technology |
 |---|---|
-| Runtime and compiler | Go toolchain selected by `go.mod` and the `toolchain` directive |
+| Runtime and compiler | Exact Go toolchain selected by the full patch version in the `go.mod` `go` directive |
 | Dependency resolution and checksums | Go modules, `go.mod`, and `go.sum` |
 | Build | `go build` with first-party build scripts only when needed |
 | Native binding boundary | cgo only inside approved adapter packages |
@@ -32,6 +32,8 @@ This document owns approved direct dependencies and their responsibilities. The 
 | Identifiers, dates, hashing, and atomic files | Standard library |
 
 The Windows UI build uses cgo because the approved Raygui binding requires it. The compatibility gate records the supported Windows C toolchain. Coordinator and worker code must not import Raylib or Raygui.
+
+Do not add a `toolchain` directive that repeats the exact version in the `go` directive; the Go tool removes that redundant directive during module maintenance. Add a `toolchain` directive only when intentionally selecting a different toolchain.
 
 ## Numerical, data, and storage
 

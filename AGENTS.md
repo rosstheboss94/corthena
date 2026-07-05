@@ -2,9 +2,9 @@
 
 ## Project
 
-This repository is a specification-first, Windows-focused trading research workstation implemented entirely in Go 1.25.7. It uses first-party Go implementations of tree-based ML, a local Go coordinator, isolated training processes with bounded goroutine pools, and a Raylib desktop UI through `github.com/gen2brain/raylib-go`.
+This repository is a specification-first, Windows-focused trading research workstation implemented entirely in Go 1.25.11. It uses first-party Go implementations of tree-based ML, a local Go coordinator, isolated training processes with bounded goroutine pools, and a Raylib desktop UI through `github.com/gen2brain/raylib-go`.
 
-The repository is currently specification-only. Do not invent setup, test, lint, or launch commands before the corresponding project files exist.
+The repository currently contains the Phase 0 compatibility gate. Do not invent setup, test, lint, or launch commands before the corresponding project files exist.
 
 ## Always-required invariants
 

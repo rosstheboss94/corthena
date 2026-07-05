@@ -1,15 +1,17 @@
 # Frontend-First Implementation Roadmap
 
-**Status:** Planned  
+**Status:** In progress
 **Owner:** Project  
 **Last updated:** 2026-07-05  
 **Related:** [Technology stack](technology-stack.md), [Product](product.md), [Quality](quality.md), [Frontend foundation](frontend/foundation.md), [Frontend workspaces](frontend/workspaces.md), [Frontend visualization](frontend/visualization.md)
 
-The repository is specification-only. Build the frontend against deterministic dummy data before implementing the real coordinator and research engine. Behavioral requirements remain in their owning specifications.
+Phase 0 compatibility code now exists. Build the frontend against deterministic dummy data before implementing the real coordinator and research engine. Behavioral requirements remain in their owning specifications.
 
 ## 0. Go and native compatibility
 
-1. Create the Go module with the selected Go 1.25.7 toolchain.
+**Implementation status:** Complete. The Go 1.25.11 toolchain, approved modules, typed compatibility adapters, native checks, tests, static analysis, race detector, and vulnerability scan pass on Windows/amd64.
+
+1. Create the Go module with the selected Go 1.25.11 toolchain.
 2. Verify Arrow/Parquet, SQLite, WebSocket, Windows adapters, `raylib-go`, Raygui, and development tools.
 3. Exercise a minimal Raylib/Raygui window on a locked OS thread.
 4. Verify Arrow, Parquet, SQLite WAL, typed memory mapping, loopback HTTP, WebSocket, and worker-pipe round trips.
