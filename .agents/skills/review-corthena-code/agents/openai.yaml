@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Corthena Code"
+  short_description: "Review Corthena changes for actionable defects"
+  default_prompt: "Use $review-corthena-code to review the current Corthena changes and report actionable defects."

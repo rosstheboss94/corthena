@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Windows Compatibility Gate"
+  short_description: "Validate the Go and Windows native stack"
+  default_prompt: "Use $go-windows-compat-gate to run the repository compatibility gate and report any blockers."
