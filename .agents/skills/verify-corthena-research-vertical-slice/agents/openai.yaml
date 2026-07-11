@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Corthena Research"
+  short_description: "Verify Corthena's Research vertical slice"
+  default_prompt: "Use $verify-corthena-research-vertical-slice to validate Corthena roadmap Phase 6."

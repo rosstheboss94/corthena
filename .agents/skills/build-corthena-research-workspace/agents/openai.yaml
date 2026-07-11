@@ -1,0 +1,4 @@
+interface:
+  display_name: "Corthena Research Workspace"
+  short_description: "Build Corthena's polished Research workspace"
+  default_prompt: "Use $build-corthena-research-workspace to implement Corthena roadmap Phase 6."

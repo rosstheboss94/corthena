@@ -2,7 +2,7 @@
 
 **Status:** Authoritative  
 **Owner:** Frontend  
-**Last updated:** 2026-07-04  
+**Last updated:** 2026-07-11
 **Related:** [Technology stack](../technology-stack.md), [Workspaces](workspaces.md), [Visualization](visualization.md), [API](../api.md), [ADR 0004](../decisions/0004-raylib-dockable-interface.md)
 
 ## Technology constraints
@@ -22,6 +22,7 @@ V1 uses one Windows Raylib OS window and one dark theme.
 - Central dock host.
 - Bottom status bar with coordinator health, selection, cache, CPU slots, worker status, FPS, and shortcut hints.
 - Modal layer for confirmation, file selection, command palette, and critical errors.
+- Global Settings modal for application UI sizing, opened from the top navigation or `Ctrl+,`.
 - Toast layer for nonblocking notifications.
 
 ## Frame loop and OS-thread ownership
@@ -51,8 +52,25 @@ No filesystem, database, network, Arrow decoding, or training operation runs on 
 - `LinkContext`: dataset, symbols, interval, time range, experiment, run, and model.
 - `UIAction`: closed internal interface for typed user/server transitions.
 - `UIEffect`: closed internal interface for typed API, persistence, clipboard, or file-dialog work.
+- `Preferences`: global UI-size selection with independent revision and persistence state.
+- `ResearchQuery`: validated dataset, symbols, interval, UTC range, selected
+  features, target, resolution, cursor, sort/filter, correlation, link-group,
+  scenario, and generation identity.
+- `ResearchWorkspaceState`: independently ordered link-group requests,
+  immutable render-ready chart buffers, typed feature/target values with
+  explicit observation and future-target timestamps, virtual
+  row pages, stable selections, layer visibility, stale-result state, and
+  typed loading/failure/recovery conditions.
 
 Switches over closed variants include a default branch that reports an invariant violation. Serialized discriminators are validated before constructing internal variants. Native Raylib, Raygui, Arrow, Windows, and SQLite values stay inside adapters.
+
+The pre-coordinator demo implements Research through the same narrow
+`FrontendClient` and effects runtime used by the shell. Superseding and hidden
+workspace requests are canceled by link group; generation checks reject stale
+completions. Demo preparation, feature/target calculation, LOD, sorting,
+filtering, and pagination run on bounded background workers. This internal
+demo contract does not define coordinator HTTP endpoints; the public API
+remains owned by `specs/api.md`.
 
 ## Dock manager
 
@@ -89,16 +107,22 @@ Use hierarchical widget IDs and explicit hot, active, focused, and pointer-captu
 - Negative `#EF6B73`
 - Warning `#D8B45A`
 
-Bundle Inter for controls, JetBrains Mono for data, and a Lucide-derived icon atlas. Use a 4-pixel spacing grid, approximately 26-pixel panel headers, 32-pixel top navigation, and 22-pixel status bar at 100% scale.
+Bundle Inter for controls, JetBrains Mono for data, and a Lucide-derived icon atlas. Load fonts at a high-resolution atlas size so enlarged text remains sharp. Use a 4-pixel spacing grid, approximately 32-pixel panel headers, 36-pixel top navigation, 40-pixel context bar, and 26-pixel status bar before scaling. Before scaling, use 12-pixel captions, 13-pixel body and data text, 14-pixel controls, and 18-pixel headings as minimum readable roles.
 
 ## Responsive behavior and persistence
 
 - Optimize for 1920×1080 and remain usable at 1280×720.
 - Support Windows scale factors from 100–200%.
 - Below roughly 1100 logical pixels, stack secondary panels and move controls into overflow menus.
+- Default the application UI-size preset to 125%; support 100%, 125%, 150%, 175%, and 200% presets.
+- Compute effective UI scale as Windows DPI scale multiplied by the selected preset and clamp it to 100-200%.
+- Apply effective scale to typography, spacing, rows, controls, hit targets, navigation, docking geometry, modal bounds, clipping, and panel minimum sizes.
+- Open Settings with the top-navigation control or `Ctrl+,`; use `Ctrl+Plus` and `Ctrl+Minus` to step presets and `Ctrl+0` to restore 125%.
+- At constrained widths, abbreviate all seven workspace tabs and move connection and active-job detail into the status bar before allowing navigation overlap.
 - Preserve the active analytical panel before reducing text below its minimum size.
 - Store split ratios, not physical pixels.
 - Persist layouts/preferences atomically in the user application-data directory with schema versions and migrations.
+- Store global preferences separately from named layouts, coalesce rapid saves on a bounded background worker, reject stale loads, quarantine invalid documents, and fall back to 125%.
 - Preserve invalid documents for diagnosis and fall back to defaults.
 
 If the coordinator is unavailable, keep the shell/layout operational, disable mutating commands, and show reconnect/restart actions.

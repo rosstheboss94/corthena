@@ -2,7 +2,7 @@
 
 **Status:** Authoritative  
 **Owner:** Frontend  
-**Last updated:** 2026-07-04  
+**Last updated:** 2026-07-11
 **Related:** [Technology stack](../technology-stack.md), [Foundation](foundation.md), [Visualization](visualization.md)
 
 All workspaces consume typed state and emit `UIAction` values. Panels do not call repositories, the network, the filesystem, workers, or the simulator directly.
@@ -18,6 +18,28 @@ Users can import files, choose append or range replacement, inspect validation f
 Default panels are the primary OHLCV chart, feature browser, series inspector, target preview, feature/target distributions, and row-level data table.
 
 Linked panels synchronize dataset, symbols, interval, and visible time range through configurable link groups.
+
+The default Research layout keeps the OHLCV chart primary, groups the four
+inspectors in a side tab stack, and places the virtualized row table below. At
+constrained logical widths the six panels collapse into one operable tab stack
+without changing their stable IDs or link-group assignments.
+
+The chart provides candlestick and volume rendering, selected-feature and
+forward-target overlays, train/validation/test regions, crosshair values,
+wheel zoom, shift-drag pan, box range selection, layer visibility, and reset.
+Feature selection, row selection, typed sorting and filtering, and cursor
+pagination retain stable identities across refreshed generations.
+
+Every link group owns an independent, generation-ordered Research request and
+selection state. Only dataset, symbols, interval, and visible range propagate
+through the source panel's supported link scopes; comparison groups remain
+unchanged. Panels retain stale data during a refresh and render loading, empty,
+failure/retry, degraded, recovered, canceled, and saturated states in place.
+
+Feature values retain explicit missing prefixes until their declared lookback
+is available. Target previews use the configured forward open-to-open horizon,
+exclude rows without a dataset-valid future target, and do not change feature,
+target, or split membership when the visible range changes.
 
 ## Experiments
 
