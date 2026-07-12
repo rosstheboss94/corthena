@@ -12,7 +12,7 @@ specifications; `specs/routing/phase-*.md` provides compact reading routes and
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Python/Cython Windows compatibility | Complete; the clean evidence-producing gate passed for exact regular CPython `3.14.2` and `cp314-win_amd64`. |
-| 1 | Strict Raylib frontend scaffold | Complete; commands, assets, typed adapters, UI-thread enforcement, smoke launch, and gates pass. |
+| 1 | [Strict Raylib frontend scaffold](routing/phase-1.md) | Complete; the packaged assets, typed adapter, UI-thread checks, bounded native smoke launch, cleanup tests, and configured gates pass. |
 | 2 | Typed frontend architecture and simulator | Pending; implement typed Python state, effects, and deterministic simulator behavior. |
 | 3 | Application shell | Pending; implement the Python shell and hidden-launch lifecycle. |
 | 4 | Docking, controls, settings, responsive persistence | Pending; implement typed layouts, preferences, recovery, replay, and scale behavior. |
@@ -49,6 +49,26 @@ applicable quality and golden gates.
   Cython checks pass using the recorded project commands.
 
 Package scaffolding alone never marks a phase ported.
+
+## Phase 1 route and done condition
+
+Use the [Phase 1 task route](routing/phase-1.md) with these required skills, in
+order:
+
+1. `$build-corthena-raylib-frontend`
+2. `$python-best-practices`
+3. `$python-windows-compat-gate`
+4. `$review-corthena-code`
+
+Phase 1 is complete only when the strict empty workstation scaffold has a
+named project entry point and frontend package; validates bundled fonts and
+icons before native initialization; contains Raylib, Raygui, and Windows
+values in a typed adapter; locks and enforces the UI OS thread for every native
+call; renders at least one frame in a bounded smoke launch; and shuts down
+cleanly. Focused adapter tests and every applicable configured quality and
+Windows compatibility gate must pass. Phase 1 does not include typed shell
+state, effects, docking, workspaces, charts, simulator behavior, or domain
+workflows from Phase 2 or later.
 
 ## Global acceptance
 

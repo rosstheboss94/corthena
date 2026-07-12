@@ -2,13 +2,11 @@
 
 Corthena is a Windows-first trading research workstation being migrated to a
 typed Python/Cython modular monolith. The Python implementation currently
-contains the Phase 0 compatibility scaffold: exact-runtime validation, a Cython
-extension, Raylib/Raygui smoke capture, loopback HTTP/WebSocket checks, and
-storage compatibility checks.
+contains the Phase 0 compatibility scaffold and the Phase 1 strict Raylib
+workstation frontend lifecycle.
 
-The workstation, coordinator, worker, and research CLI entry points are not yet
-implemented in this migration tree. The currently runnable entry point is the
-Phase 0 compatibility gate described below. See
+The coordinator, worker, and research CLI entry points are not yet implemented.
+The workstation and Phase 0 compatibility gate are runnable. See
 [`specs/roadmap.md`](specs/roadmap.md) for implementation status.
 
 ## Requirements
@@ -55,15 +53,23 @@ Run the Phase 0 compatibility gate:
 uv run corthena-phase0-gate
 ```
 
+Launch the empty Phase 1 workstation shell:
+
+```powershell
+uv run corthena-workstation
+```
+
+For a bounded hidden smoke launch that renders one frame and exits cleanly:
+
+```powershell
+uv run corthena-workstation --hidden --smoke-frames 1
+```
+
 The gate validates the runtime and approved native imports, imports the Cython
 extension, opens a hidden Raylib window on the UI thread, loads bundled assets,
 captures a smoke frame, exercises loopback HTTP/WebSocket behavior, verifies
 SQLite/Arrow/memory-map storage, and cleans up its resources. It prints JSON
 evidence to standard output and exits nonzero on failure.
-
-There is currently no normal workstation launch command. Add one to
-`[project.scripts]` in `pyproject.toml` when the corresponding implementation
-phase lands, then document it here.
 
 ## Build
 
