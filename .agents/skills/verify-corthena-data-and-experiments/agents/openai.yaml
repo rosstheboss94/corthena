@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Corthena Data and Experiments"
+  short_description: "Verify Phase 7 catalog and experiment workflows"
+  default_prompt: "Use $verify-corthena-data-and-experiments to verify a Phase 7 Data or Experiments workflow."

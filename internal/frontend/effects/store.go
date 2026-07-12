@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/rosstheboss94/corthena/internal/frontend/appstate"
+	"github.com/rosstheboss94/corthena/internal/frontend/drafts"
 	"github.com/rosstheboss94/corthena/internal/frontend/layouts"
 	"github.com/rosstheboss94/corthena/internal/frontend/preferences"
 )
@@ -27,6 +28,69 @@ type LayoutStore interface {
 type PreferenceStore interface {
 	Load(context.Context) (preferences.LoadResult, error)
 	Save(context.Context, preferences.Snapshot) error
+}
+
+// ExperimentDraftStore owns versioned local draft autosave persistence.
+type ExperimentDraftStore interface {
+	Load(context.Context) (drafts.LoadResult, error)
+	Save(context.Context, drafts.Snapshot) error
+}
+
+// MemoryExperimentDraftStore is a deterministic revision-aware test store.
+type MemoryExperimentDraftStore struct {
+	mu       sync.Mutex
+	snapshot drafts.Snapshot
+	present  bool
+}
+
+// NewMemoryExperimentDraftStore creates an empty draft store.
+func NewMemoryExperimentDraftStore() *MemoryExperimentDraftStore {
+	return &MemoryExperimentDraftStore{}
+}
+
+// Load returns the saved draft or a missing default.
+func (store *MemoryExperimentDraftStore) Load(ctx context.Context) (drafts.LoadResult, error) {
+	if store == nil || ctx == nil {
+		return drafts.LoadResult{}, errors.New("memory experiment draft store is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return drafts.LoadResult{}, err
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if !store.present {
+		return drafts.LoadResult{Source: drafts.LoadDefaultMissing}, nil
+	}
+	return drafts.LoadResult{Snapshot: drafts.Snapshot{Revision: store.snapshot.Revision, Draft: store.snapshot.Draft.Clone()}, Source: drafts.LoadSaved}, nil
+}
+
+// Save retains a newer or identical immutable draft revision.
+func (store *MemoryExperimentDraftStore) Save(ctx context.Context, snapshot drafts.Snapshot) error {
+	if store == nil || ctx == nil {
+		return errors.New("memory experiment draft store is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if _, err := drafts.Encode(snapshot); err != nil {
+		return err
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.present && snapshot.Revision < store.snapshot.Revision {
+		return drafts.ErrStaleRevision
+	}
+	if store.present && snapshot.Revision == store.snapshot.Revision {
+		left, _ := drafts.Encode(snapshot)
+		right, _ := drafts.Encode(store.snapshot)
+		if !bytes.Equal(left, right) {
+			return drafts.ErrRevisionConflict
+		}
+		return nil
+	}
+	store.snapshot = drafts.Snapshot{Revision: snapshot.Revision, Draft: snapshot.Draft.Clone()}
+	store.present = true
+	return nil
 }
 
 // MemoryPreferenceStore is a deterministic test preference store.

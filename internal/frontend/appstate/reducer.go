@@ -32,6 +32,19 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 				}
 			}
 		}
+		if previous == WorkspaceData && action.Workspace != WorkspaceData && next.Data.State == WorkspaceLoading {
+			effects = append(effects, CancelDataEffect{ID: "data-cancel-workspace", Generation: next.Data.Generation})
+		}
+		if previous == WorkspaceExperiments && action.Workspace != WorkspaceExperiments && next.Experiments.State == WorkspaceLoading {
+			effects = append(effects, CancelExperimentEffect{ID: "experiments-cancel-workspace", Generation: next.Experiments.Generation})
+		}
+		if action.Workspace == WorkspaceData {
+			effect, err := refreshDataWorkspace(&next)
+			if err != nil {
+				return state, nil, err
+			}
+			effects = append(effects, effect)
+		}
 		if action.Workspace == WorkspaceResearch {
 			if groupID, context, found := defaultResearchGroup(next.Layouts); found {
 				effect, err := refreshResearchGroup(&next, groupID, context, "")
@@ -42,6 +55,13 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 					effects = append(effects, effect)
 				}
 			}
+		}
+		if action.Workspace == WorkspaceExperiments {
+			effect, err := refreshExperimentsWorkspace(&next)
+			if err != nil {
+				return state, nil, err
+			}
+			effects = append(effects, effect)
 		}
 		return next, effects, nil
 	case SetLinkContextAction:
@@ -411,6 +431,174 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 		group.Stale = group.Snapshot.Query.Generation != 0
 		group.Error = ErrorSnapshot{Code: ErrorResearchCancelled, Message: "Research request cancelled", Retryable: true}
 		return next, nil, nil
+	case RequestDataWorkspaceAction:
+		effect, err := beginDataQuery(&next, action.Query)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SetDataScenarioAction:
+		if !action.Scenario.Valid() {
+			return state, nil, fmt.Errorf("%w: invalid Data scenario %q", ErrInvariant, action.Scenario)
+		}
+		next.Data.Scenario = action.Scenario
+		effect, err := refreshDataWorkspace(&next)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SelectDataDatasetAction:
+		if action.DatasetID == "" || !containsDataset(next.Data.Snapshot.Catalog, action.DatasetID) {
+			return state, nil, fmt.Errorf("%w: unknown Data dataset %q", ErrInvariant, action.DatasetID)
+		}
+		next.Data.SelectedDatasetID = action.DatasetID
+		for _, dataset := range next.Data.Snapshot.Catalog {
+			if dataset.ID == action.DatasetID {
+				next.LinkContext = contextForDatasetState(next.LinkContext, dataset)
+				next.updateDefaultLinkGroup(next.LinkContext)
+				break
+			}
+		}
+		return next, nil, nil
+	case SelectDataImportAction:
+		if action.ImportID != "" && !containsImport(next.Data.Snapshot.Imports, action.ImportID) {
+			return state, nil, fmt.Errorf("%w: unknown Data import %q", ErrInvariant, action.ImportID)
+		}
+		next.Data.SelectedImportID = action.ImportID
+		return next, nil, nil
+	case SubmitDataImportAction:
+		effect, err := beginDataImport(&next, action.Request)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case DataQueryFailedAction:
+		if action.Generation != next.Data.Generation {
+			return next, nil, nil
+		}
+		next.Data.State = workspaceFailureState(action.Error.Code)
+		next.Data.Stale = next.Data.Snapshot.Query.Generation != 0
+		next.Data.Error = action.Error
+		return next, nil, nil
+	case DataQueryCancelledAction:
+		if action.Generation != next.Data.Generation {
+			return next, nil, nil
+		}
+		next.Data.State = WorkspaceCancelled
+		next.Data.Stale = next.Data.Snapshot.Query.Generation != 0
+		next.Data.Error = ErrorSnapshot{Code: ErrorDataCancelled, Message: "Data request cancelled", Retryable: true}
+		return next, nil, nil
+	case RequestExperimentsAction:
+		effect, err := beginExperimentsQuery(&next, action.Query)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SetExperimentScenarioAction:
+		if !action.Scenario.Valid() {
+			return state, nil, fmt.Errorf("%w: invalid experiment scenario %q", ErrInvariant, action.Scenario)
+		}
+		next.Experiments.Scenario = action.Scenario
+		effect, err := refreshExperimentsWorkspace(&next)
+		if err != nil {
+			return state, nil, err
+		}
+		effects := []UIEffect{effect}
+		if next.Experiments.Draft.Revision != 0 {
+			next.Experiments.EvaluationGeneration++
+			request := ExperimentEvaluationRequest{
+				CorrelationID: CorrelationID(fmt.Sprintf("experiment-evaluate-%020d", next.Experiments.EvaluationGeneration)),
+				Generation:    next.Experiments.EvaluationGeneration, Draft: next.Experiments.Draft.Clone(), Scenario: action.Scenario,
+			}
+			effects = append(effects, EvaluateExperimentEffect{ID: EffectID(request.CorrelationID), Request: request})
+		}
+		return next, effects, nil
+	case UpdateExperimentDraftAction:
+		effects, err := updateExperimentDraft(&next, action.Draft, action.UpdatedAt)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, effects, nil
+	case SelectExperimentSectionAction:
+		valid := false
+		for _, section := range ExperimentSections() {
+			if action.Section == section {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return state, nil, fmt.Errorf("%w: unknown experiment section %q", ErrInvariant, action.Section)
+		}
+		next.Experiments.SelectedSection = action.Section
+		return next, nil, nil
+	case SelectExperimentDefinitionAction:
+		if action.ExperimentID != "" && !containsExperiment(next.Experiments.Snapshot.Definitions, action.ExperimentID) {
+			return state, nil, fmt.Errorf("%w: unknown experiment %q", ErrInvariant, action.ExperimentID)
+		}
+		next.Experiments.SelectedExperimentID = action.ExperimentID
+		next.LinkContext.ExperimentID = action.ExperimentID
+		return next, nil, nil
+	case SubmitExperimentAction:
+		command := action.Command
+		command.Draft = command.Draft.Clone()
+		if command.CorrelationID == "" || command.CommandID == "" || command.Generation == 0 || !command.Scenario.Valid() || len(ValidateExperimentDraft(command.Draft)) != 0 {
+			return state, nil, fmt.Errorf("%w: experiment submission is invalid", ErrInvalidExperiment)
+		}
+		if command.Draft.Revision != next.Experiments.Draft.Revision {
+			return state, nil, fmt.Errorf("%w: submission draft revision is stale", ErrInvalidExperiment)
+		}
+		return next, []UIEffect{SubmitExperimentEffect{ID: EffectID("experiment-submit-" + string(command.CommandID)), Command: command}}, nil
+	case ExperimentQueryFailedAction:
+		if action.Generation != next.Experiments.Generation && action.Generation != next.Experiments.EvaluationGeneration {
+			return next, nil, nil
+		}
+		next.Experiments.State = workspaceFailureState(action.Error.Code)
+		next.Experiments.Stale = next.Experiments.Snapshot.Query.Generation != 0
+		next.Experiments.Error = action.Error
+		return next, nil, nil
+	case ExperimentQueryCancelledAction:
+		if action.Generation != next.Experiments.Generation && action.Generation != next.Experiments.EvaluationGeneration {
+			return next, nil, nil
+		}
+		next.Experiments.State = WorkspaceCancelled
+		next.Experiments.Error = ErrorSnapshot{Code: ErrorExperimentCancelled, Message: "Experiment request cancelled", Retryable: true}
+		return next, nil, nil
+	case ExperimentDraftLoadedAction:
+		if next.Experiments.Draft.Revision != action.BaseRevision {
+			return next, nil, nil
+		}
+		if action.Draft.Revision != 0 {
+			next.Experiments.Draft = action.Draft.Clone()
+			next.Experiments.DraftPersistence.LastSavedRevision = action.Draft.Revision
+			next.Experiments.DraftPersistence.LastSavedAt = action.LoadedAt.UTC()
+			next.Experiments.EvaluationGeneration++
+			request := ExperimentEvaluationRequest{CorrelationID: CorrelationID(fmt.Sprintf("experiment-evaluate-%020d", next.Experiments.EvaluationGeneration)), Generation: next.Experiments.EvaluationGeneration, Draft: action.Draft.Clone(), Scenario: next.Experiments.Scenario}
+			if action.Recovered && action.Diagnostic != "" {
+				next.Overlays.Toasts = append(next.Overlays.Toasts, Toast{ID: action.EffectID, Kind: ToastWarning, Message: action.Diagnostic, CreatedAt: action.LoadedAt.UTC()})
+			}
+			return next, []UIEffect{EvaluateExperimentEffect{ID: EffectID(request.CorrelationID), Request: request}}, nil
+		}
+		return next, nil, nil
+	case ExperimentDraftPersistedAction:
+		if action.Revision < next.Experiments.DraftPersistence.LastSavedRevision {
+			return next, nil, nil
+		}
+		next.Experiments.DraftPersistence.LastSavedRevision = action.Revision
+		next.Experiments.DraftPersistence.LastSavedAt = action.SavedAt.UTC()
+		if action.Revision >= next.Experiments.DraftPersistence.PendingRevision {
+			next.Experiments.DraftPersistence.PendingRevision = 0
+		}
+		next.Experiments.DraftPersistence.LastError = ErrorSnapshot{}
+		return next, nil, nil
+	case ExperimentDraftPersistenceFailedAction:
+		if action.Revision < next.Experiments.DraftPersistence.LastErrorRevision {
+			return next, nil, nil
+		}
+		next.Experiments.DraftPersistence.LastError = action.Error
+		next.Experiments.DraftPersistence.LastErrorRevision = action.Revision
+		next.Overlays.Toasts = append(next.Overlays.Toasts, Toast{ID: action.EffectID, Kind: ToastError, Message: action.Error.Message, CreatedAt: action.FailedAt.UTC()})
+		return next, nil, nil
 	case ClientMessageAction:
 		return reduceClientMessage(next, action.Message)
 	case LayoutsLoadedAction:
@@ -563,12 +751,12 @@ func reduceClientMessage(state AppState, message ClientMessage) (AppState, []UIE
 		state.Inferences = snapshot.Inferences
 		state.applyEventEnvelope(snapshot.Event)
 		state.defaultContextFromSnapshot()
-		return refreshResearchAfterCatalog(state)
+		return refreshWorkspacesAfterCatalog(state)
 	case DatasetCatalogMessage:
 		state.Datasets = cloneDatasets(message.Datasets)
 		state.applyEventEnvelope(message.Event)
 		state.defaultContextFromSnapshot()
-		return refreshResearchAfterCatalog(state)
+		return refreshWorkspacesAfterCatalog(state)
 	case JobUpdateMessage:
 		state.Jobs = upsertJob(state.Jobs, message.Job)
 		state.applyEventEnvelope(message.Event)
@@ -598,6 +786,46 @@ func reduceClientMessage(state AppState, message ClientMessage) (AppState, []UIE
 			state.Connection.Detail = "Research connection recovered and reconciled"
 		}
 		return state, nil, nil
+	case DataWorkspaceMessage:
+		if !applyDataWorkspaceResponse(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		if message.Snapshot.Degraded {
+			state.Connection.State = ConnectionDegraded
+			state.Connection.Detail = "Data catalog is degraded; the last immutable catalog remains available"
+		} else if message.Snapshot.Query.Scenario == DataScenarioRecovered {
+			state.Connection.State = ConnectionConnected
+			state.Connection.Detail = "Data catalog recovered and reconciled"
+		}
+		return state, nil, nil
+	case ExperimentWorkspaceMessage:
+		if !applyExperimentWorkspaceResponse(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		if message.Snapshot.Degraded {
+			state.Connection.State = ConnectionDegraded
+			state.Connection.Detail = "Experiment catalog is degraded; saved definitions remain available"
+		} else if message.Snapshot.Query.Scenario == ExperimentScenarioRecovered {
+			state.Connection.State = ConnectionConnected
+			state.Connection.Detail = "Experiment catalog recovered and reconciled"
+		}
+		return state, nil, nil
+	case ExperimentEvaluationMessage:
+		if !applyExperimentEvaluation(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		return state, nil, nil
+	case ExperimentSubmittedMessage:
+		definition := message.Definition.Clone()
+		state.Experiments.Snapshot.Definitions = upsertExperimentDefinition(state.Experiments.Snapshot.Definitions, definition)
+		state.Experiments.SelectedExperimentID = definition.ID
+		state.LinkContext.ExperimentID = definition.ID
+		state.Jobs = upsertJob(state.Jobs, message.Job)
+		state.applyEventEnvelope(message.Event)
+		return state, nil, nil
 	case ComponentStatusMessage:
 		state.Components = upsertComponent(state.Components, message.Component)
 		state.applyEventEnvelope(message.Event)
@@ -622,22 +850,34 @@ func reduceClientMessage(state AppState, message ClientMessage) (AppState, []UIE
 	}
 }
 
-func refreshResearchAfterCatalog(state AppState) (AppState, []UIEffect, error) {
-	if state.ActiveWorkspace != WorkspaceResearch {
-		return state, nil, nil
+func refreshWorkspacesAfterCatalog(state AppState) (AppState, []UIEffect, error) {
+	effects := ensureDefaultExperimentDraft(&state)
+	switch state.ActiveWorkspace {
+	case WorkspaceData:
+		effect, err := refreshDataWorkspace(&state)
+		if err != nil {
+			return state, nil, err
+		}
+		effects = append(effects, effect)
+	case WorkspaceResearch:
+		groupID, context, found := defaultResearchGroup(state.Layouts)
+		if found && context.DatasetID != "" {
+			effect, err := refreshResearchGroup(&state, groupID, context, "")
+			if err != nil {
+				return state, nil, err
+			}
+			if effect != nil {
+				effects = append(effects, effect)
+			}
+		}
+	case WorkspaceExperiments:
+		effect, err := refreshExperimentsWorkspace(&state)
+		if err != nil {
+			return state, nil, err
+		}
+		effects = append(effects, effect)
 	}
-	groupID, context, found := defaultResearchGroup(state.Layouts)
-	if !found || context.DatasetID == "" {
-		return state, nil, nil
-	}
-	effect, err := refreshResearchGroup(&state, groupID, context, "")
-	if err != nil {
-		return state, nil, err
-	}
-	if effect == nil {
-		return state, nil, nil
-	}
-	return state, []UIEffect{effect}, nil
+	return state, effects, nil
 }
 
 func commitAllLayouts(

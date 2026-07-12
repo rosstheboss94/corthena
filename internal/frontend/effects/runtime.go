@@ -22,6 +22,7 @@ type Config struct {
 	MaxConcurrent   int
 	Clock           appstate.Clock
 	PreferenceStore PreferenceStore
+	DraftStore      ExperimentDraftStore
 }
 
 // Runtime owns background goroutines for client and persistence effects.
@@ -39,14 +40,24 @@ type Runtime struct {
 	preferenceStore PreferenceStore
 	preferenceTasks *preferenceTaskQueue
 	preferenceWake  chan struct{}
+	draftStore      ExperimentDraftStore
+	draftTasks      *draftTaskQueue
+	draftWake       chan struct{}
 	wg              sync.WaitGroup
 	once            sync.Once
 	researchMu      sync.Mutex
 	researchCancels map[appstate.LinkGroupID]researchCancellation
+	workflowMu      sync.Mutex
+	workflowCancels map[string]workflowCancellation
 	err             error
 }
 
 type researchCancellation struct {
+	generation uint64
+	cancel     context.CancelFunc
+}
+
+type workflowCancellation struct {
 	generation uint64
 	cancel     context.CancelFunc
 }
@@ -83,6 +94,9 @@ func Start(
 	if config.PreferenceStore == nil {
 		config.PreferenceStore = NewMemoryPreferenceStore()
 	}
+	if config.DraftStore == nil {
+		config.DraftStore = NewMemoryExperimentDraftStore()
+	}
 	ctx, cancel := context.WithCancel(parent)
 	runtime := &Runtime{
 		ctx:             ctx,
@@ -98,12 +112,17 @@ func Start(
 		preferenceStore: config.PreferenceStore,
 		preferenceTasks: newPreferenceTaskQueue(config.EffectBuffer),
 		preferenceWake:  make(chan struct{}, 1),
+		draftStore:      config.DraftStore,
+		draftTasks:      newDraftTaskQueue(config.EffectBuffer),
+		draftWake:       make(chan struct{}, 1),
 		researchCancels: make(map[appstate.LinkGroupID]researchCancellation),
+		workflowCancels: make(map[string]workflowCancellation),
 	}
-	runtime.wg.Add(3)
+	runtime.wg.Add(4)
 	go runtime.dispatch()
 	go runtime.runLayoutWorker()
 	go runtime.runPreferenceWorker()
+	go runtime.runDraftWorker()
 	return runtime, nil
 }
 
@@ -159,11 +178,26 @@ func (runtime *Runtime) startEffect(effect appstate.UIEffect) {
 		appstate.PersistPreferencesEffect:
 		runtime.enqueuePreferenceEffect(typedEffect)
 		return
+	case appstate.LoadExperimentDraftEffect,
+		appstate.PersistExperimentDraftEffect:
+		runtime.enqueueDraftEffect(typedEffect)
+		return
 	case appstate.QueryResearchEffect:
 		runtime.startResearch(typedEffect)
 		return
 	case appstate.CancelResearchEffect:
 		runtime.cancelResearch(typedEffect)
+		return
+	case appstate.QueryDataWorkspaceEffect,
+		appstate.ImportDataEffect,
+		appstate.QueryExperimentsEffect,
+		appstate.EvaluateExperimentEffect,
+		appstate.SubmitExperimentEffect:
+		runtime.startWorkflow(typedEffect)
+		return
+	case appstate.CancelDataEffect,
+		appstate.CancelExperimentEffect:
+		runtime.cancelWorkflow(typedEffect)
 		return
 	}
 	select {
@@ -373,6 +407,24 @@ func effectID(effect appstate.UIEffect) appstate.EffectID {
 	case appstate.QueryResearchEffect:
 		return effect.ID
 	case appstate.CancelResearchEffect:
+		return effect.ID
+	case appstate.QueryDataWorkspaceEffect:
+		return effect.ID
+	case appstate.ImportDataEffect:
+		return effect.ID
+	case appstate.CancelDataEffect:
+		return effect.ID
+	case appstate.QueryExperimentsEffect:
+		return effect.ID
+	case appstate.EvaluateExperimentEffect:
+		return effect.ID
+	case appstate.SubmitExperimentEffect:
+		return effect.ID
+	case appstate.CancelExperimentEffect:
+		return effect.ID
+	case appstate.LoadExperimentDraftEffect:
+		return effect.ID
+	case appstate.PersistExperimentDraftEffect:
 		return effect.ID
 	default:
 		return ""

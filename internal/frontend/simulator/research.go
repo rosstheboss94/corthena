@@ -37,7 +37,7 @@ var demoFeatureDescriptors = []appstate.ResearchFeatureDescriptor{
 }
 
 func (client *DemoCoordinator) buildResearchSnapshot(ctx context.Context, query appstate.ResearchQuery) (appstate.ResearchSnapshot, error) {
-	preparedAt := client.snapshot.Event.Timestamp.Add(time.Duration(query.Generation) * time.Millisecond)
+	preparedAt := client.baseTime().Add(time.Duration(query.Generation) * time.Millisecond)
 	for _, feature := range query.SelectedFeatures {
 		if featureDescriptorIndex(feature) < 0 {
 			return appstate.ResearchSnapshot{}, fmt.Errorf("Research feature %q is unknown", feature)
@@ -141,7 +141,13 @@ func (client *DemoCoordinator) buildResearchSnapshot(ctx context.Context, query 
 }
 
 func (client *DemoCoordinator) researchDataset(query appstate.ResearchQuery) (appstate.DatasetSummary, error) {
-	for _, dataset := range client.snapshot.Datasets {
+	client.mu.RLock()
+	datasets := make([]appstate.DatasetSummary, len(client.snapshot.Datasets))
+	for index, dataset := range client.snapshot.Datasets {
+		datasets[index] = dataset.Clone()
+	}
+	client.mu.RUnlock()
+	for _, dataset := range datasets {
 		if dataset.ID != query.DatasetID {
 			continue
 		}

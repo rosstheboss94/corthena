@@ -86,6 +86,8 @@ Build the OHLCV chart, feature browser, series inspector, target preview, distri
 
 ## 7. Data and Experiments
 
+**Implementation status:** Implemented. The typed simulated catalog supports validated CSV and Parquet append or UTC range-replacement imports, atomic revision and fingerprint publication, deterministic failure/cancellation/saturation scenarios, and synchronized dataset selection. Experiments provide immutable definitions, a sectioned typed editor, compiled-feature metadata, leakage-safe validation, deterministic resource estimates, strict revision-aware background draft autosave and recovery, idempotent immutable submission, benchmarks, race coverage, and a deterministic 60-entry Raylib golden matrix across both target resolutions and 100%, 150%, and 200% UI scales. Completion is blocked only by `govulncheck` on Go 1.25.11 standard-library vulnerability GO-2026-5856, which the tool reports fixed in Go 1.25.12.
+
 Build simulated catalog/import workflows and the experiment list, configuration tree, property editor, validation, resource estimate, local autosave, and immutable submission flow.
 
 **Done when:** a user can complete a simulated dataset-to-experiment workflow.

@@ -15,10 +15,12 @@ import (
 
 // DelayProfile configures deterministic simulated latency.
 type DelayProfile struct {
-	Snapshot time.Duration
-	Events   time.Duration
-	Commands time.Duration
-	Research time.Duration
+	Snapshot    time.Duration
+	Events      time.Duration
+	Commands    time.Duration
+	Research    time.Duration
+	Data        time.Duration
+	Experiments time.Duration
 }
 
 // FailureProfile configures deterministic simulated failures.
@@ -29,6 +31,8 @@ type FailureProfile struct {
 	EventsBeforeError int
 	Commands          bool
 	Research          bool
+	Data              bool
+	Experiments       bool
 }
 
 // Options configures a DemoCoordinator.
@@ -42,6 +46,7 @@ type Options struct {
 // DemoCoordinator implements appstate.FrontendClient with deterministic dummy
 // data and events.
 type DemoCoordinator struct {
+	mu            sync.RWMutex
 	snapshot      appstate.SnapshotMessage
 	events        []appstate.ClientMessage
 	delays        DelayProfile
@@ -50,6 +55,10 @@ type DemoCoordinator struct {
 	seed          uint64
 	researchCache *chart.FrameCache
 	once          sync.Once
+	imports       []appstate.DataImportRecord
+	logs          []appstate.DataLogEntry
+	definitions   []appstate.ExperimentDefinition
+	submissions   map[appstate.CorrelationID]appstate.ExperimentDefinition
 }
 
 // NewDemoCoordinator creates a seeded demo client.
@@ -78,6 +87,8 @@ func NewDemoCoordinator(options Options) (*DemoCoordinator, error) {
 		closed:        make(chan struct{}),
 		seed:          seed,
 		researchCache: researchCache,
+		definitions:   buildDemoExperimentDefinitions(now, snapshot.Datasets),
+		submissions:   make(map[appstate.CorrelationID]appstate.ExperimentDefinition),
 	}, nil
 }
 
@@ -92,36 +103,11 @@ func (client *DemoCoordinator) Snapshot(
 	if client.failures.Snapshot {
 		return appstate.SnapshotMessage{}, failure("demo snapshot failed", request.CorrelationID, true)
 	}
+	client.mu.RLock()
 	snapshot := client.snapshot.Clone()
+	client.mu.RUnlock()
 	snapshot.Event.CorrelationID = request.CorrelationID
 	return snapshot, nil
-}
-
-// SubmitExperiment returns a deterministic queued job update.
-func (client *DemoCoordinator) SubmitExperiment(
-	ctx context.Context,
-	command appstate.SubmitExperimentCommand,
-) (appstate.JobUpdateMessage, error) {
-	if err := client.wait(ctx, client.delays.Commands); err != nil {
-		return appstate.JobUpdateMessage{}, err
-	}
-	if client.failures.Commands {
-		return appstate.JobUpdateMessage{}, failure("demo command failed", command.CorrelationID, true)
-	}
-	now := client.snapshot.Event.Timestamp.Add(5 * time.Minute)
-	job := appstate.JobSummary{
-		ID:             appstate.JobID("job-" + string(command.CommandID)),
-		ExperimentID:   appstate.ExperimentID("experiment-" + string(command.CommandID)),
-		State:          appstate.JobQueued,
-		ProgressPermil: 0,
-		Stage:          "queued",
-		CPUSlots:       maxInt(1, command.Draft.RequestedCPU),
-		UpdatedAt:      now,
-	}
-	return appstate.JobUpdateMessage{
-		Event: event("evt-command-submit", "job.updated", now, command.CorrelationID),
-		Job:   job,
-	}, nil
 }
 
 // ControlJob returns a deterministic job state transition.
@@ -135,7 +121,7 @@ func (client *DemoCoordinator) ControlJob(
 	if client.failures.Commands {
 		return appstate.JobUpdateMessage{}, failure("demo command failed", command.CorrelationID, true)
 	}
-	now := client.snapshot.Event.Timestamp.Add(6 * time.Minute)
+	now := client.baseTime().Add(6 * time.Minute)
 	state := appstate.JobPaused
 	stage := "paused"
 	switch command.Control {
@@ -174,7 +160,7 @@ func (client *DemoCoordinator) RunInference(
 	if client.failures.Commands {
 		return appstate.InferenceUpdateMessage{}, failure("demo command failed", command.CorrelationID, true)
 	}
-	now := client.snapshot.Event.Timestamp.Add(7 * time.Minute)
+	now := client.baseTime().Add(7 * time.Minute)
 	return appstate.InferenceUpdateMessage{
 		Event: event("evt-command-inference", "inference.updated", now, command.CorrelationID),
 		Inference: appstate.InferenceSummary{
@@ -260,7 +246,7 @@ func (client *DemoCoordinator) Subscribe(
 					Event: event(
 						"evt-demo-failure",
 						"client.failure",
-						client.snapshot.Event.Timestamp.Add(30*time.Second),
+						client.baseTime().Add(30*time.Second),
 						"",
 					),
 					Error: appstate.ErrorSnapshot{
@@ -301,6 +287,12 @@ func (client *DemoCoordinator) eventsAfter(since appstate.EventID) []appstate.Cl
 		}
 	}
 	return cloneMessages(client.events)
+}
+
+func (client *DemoCoordinator) baseTime() time.Time {
+	client.mu.RLock()
+	defer client.mu.RUnlock()
+	return client.snapshot.Event.Timestamp.UTC()
 }
 
 func (client *DemoCoordinator) wait(ctx context.Context, delay time.Duration) error {
@@ -433,6 +425,8 @@ func buildDatasets(now time.Time, generator *demoGenerator) []appstate.DatasetSu
 			End:         dailyEnd,
 			Revision:    18,
 			Fingerprint: "data-demo-a",
+			Adjustment:  "split_dividend_adjusted",
+			ImportedAt:  now.Add(-24 * time.Hour),
 		},
 		{
 			ID:          "dataset-index-watchlist",
@@ -445,6 +439,8 @@ func buildDatasets(now time.Time, generator *demoGenerator) []appstate.DatasetSu
 			End:         hourlyEnd,
 			Revision:    7,
 			Fingerprint: "data-demo-b",
+			Adjustment:  "split_dividend_adjusted",
+			ImportedAt:  now.Add(-2 * time.Hour),
 		},
 	}
 }
@@ -640,6 +636,14 @@ func messageEventID(message appstate.ClientMessage) appstate.EventID {
 	case appstate.ClientFailureMessage:
 		return message.Event.ID
 	case appstate.ResearchResponseMessage:
+		return message.Event.ID
+	case appstate.DataWorkspaceMessage:
+		return message.Event.ID
+	case appstate.ExperimentWorkspaceMessage:
+		return message.Event.ID
+	case appstate.ExperimentEvaluationMessage:
+		return message.Event.ID
+	case appstate.ExperimentSubmittedMessage:
 		return message.Event.ID
 	default:
 		return ""

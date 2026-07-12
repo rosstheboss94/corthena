@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Corthena Data and Experiments"
+  short_description: "Implement Phase 7 catalog and experiment workflows"
+  default_prompt: "Use $build-corthena-data-and-experiments to implement a Phase 7 Data or Experiments workflow."

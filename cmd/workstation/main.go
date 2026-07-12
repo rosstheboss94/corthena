@@ -61,6 +61,8 @@ func run() int {
 	)
 	uiScale := flag.Int("ui-scale", int(appstate.DefaultUIScale), "initial UI scale percentage")
 	researchScenario := flag.String("research-scenario", string(appstate.ResearchScenarioNormal), "initial deterministic Research scenario")
+	dataScenario := flag.String("data-scenario", string(appstate.DataScenarioNormal), "initial deterministic Data scenario")
+	experimentScenario := flag.String("experiment-scenario", string(appstate.ExperimentScenarioNormal), "initial deterministic Experiments scenario")
 	researchLinkedSelection := flag.Bool("research-linked-selection", false, "apply a deterministic linked Research range selection")
 	scenarioClock := flag.String("scenario-clock", "", "fixed RFC3339 UTC clock for deterministic captures")
 	flag.Parse()
@@ -77,6 +79,16 @@ func run() int {
 	scenario := appstate.ResearchScenario(*researchScenario)
 	if !scenario.Valid() {
 		_, _ = fmt.Fprintf(os.Stderr, "unsupported Research scenario %q\n", *researchScenario)
+		return 2
+	}
+	dataCondition := appstate.DataScenario(*dataScenario)
+	if !dataCondition.Valid() {
+		_, _ = fmt.Fprintf(os.Stderr, "unsupported Data scenario %q\n", *dataScenario)
+		return 2
+	}
+	experimentCondition := appstate.ExperimentScenario(*experimentScenario)
+	if !experimentCondition.Valid() {
+		_, _ = fmt.Fprintf(os.Stderr, "unsupported Experiments scenario %q\n", *experimentScenario)
 		return 2
 	}
 	var clock appstate.Clock
@@ -114,6 +126,8 @@ func run() int {
 		LayoutDirectory:         *layoutDirectory,
 		InitialUIScale:          scale,
 		ResearchScenario:        scenario,
+		DataScenario:            dataCondition,
+		ExperimentScenario:      experimentCondition,
 		ResearchLinkedSelection: *researchLinkedSelection,
 		Clock:                   clock,
 	})

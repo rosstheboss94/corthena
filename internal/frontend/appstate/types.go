@@ -264,12 +264,17 @@ type CacheSnapshot struct {
 type ErrorCode string
 
 const (
-	ErrorClientUnavailable ErrorCode = "client_unavailable"
-	ErrorEffectBusy        ErrorCode = "effect_busy"
-	ErrorInvariant         ErrorCode = "invariant"
-	ErrorPersistence       ErrorCode = "persistence"
-	ErrorResearchFailed    ErrorCode = "research_failed"
-	ErrorResearchCancelled ErrorCode = "research_cancelled"
+	ErrorClientUnavailable   ErrorCode = "client_unavailable"
+	ErrorEffectBusy          ErrorCode = "effect_busy"
+	ErrorInvariant           ErrorCode = "invariant"
+	ErrorPersistence         ErrorCode = "persistence"
+	ErrorResearchFailed      ErrorCode = "research_failed"
+	ErrorResearchCancelled   ErrorCode = "research_cancelled"
+	ErrorDataFailed          ErrorCode = "data_failed"
+	ErrorDataCancelled       ErrorCode = "data_cancelled"
+	ErrorExperimentFailed    ErrorCode = "experiment_failed"
+	ErrorExperimentCancelled ErrorCode = "experiment_cancelled"
+	ErrorValidation          ErrorCode = "validation"
 )
 
 // ErrorSnapshot is a typed immutable error payload suitable for state.
@@ -429,6 +434,8 @@ type AppState struct {
 	Models                []ModelSummary
 	Inferences            []InferenceSummary
 	Research              ResearchWorkspaceState
+	Data                  DataWorkspaceState
+	Experiments           ExperimentsWorkspaceState
 	Overlays              OverlayState
 	Persistence           PersistenceState
 	PreferencePersistence PersistenceState
@@ -446,6 +453,8 @@ func (state AppState) Clone() AppState {
 	state.Models = cloneModels(state.Models)
 	state.Inferences = cloneInferences(state.Inferences)
 	state.Research = state.Research.Clone()
+	state.Data = state.Data.Clone()
+	state.Experiments = state.Experiments.Clone()
 	state.Overlays = state.Overlays.Clone()
 	return state
 }
@@ -494,8 +503,14 @@ func NewInitialState(clock Clock, ids IDSource) (AppState, []UIEffect, error) {
 		DefaultLayouts: cloneLayouts(layouts),
 		Preferences:    DefaultPreferences(),
 		Research:       DefaultResearchWorkspaceState(),
+		Data:           DefaultDataWorkspaceState(),
+		Experiments:    DefaultExperimentsWorkspaceState(),
 	}
 	effects := []UIEffect{
+		LoadExperimentDraftEffect{
+			ID: ids.NewEffectID(), BaseRevision: 0,
+			Defaults: ExperimentDraft{}, RequestedAt: now,
+		},
 		LoadPreferencesEffect{
 			ID:           ids.NewEffectID(),
 			BaseRevision: state.PreferenceRevision,

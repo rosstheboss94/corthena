@@ -254,6 +254,106 @@ func TestRuntimeReportsResearchQueueSaturation(t *testing.T) {
 	}
 }
 
+func TestRuntimeExecutesTypedDataAndExperimentWorkflows(t *testing.T) {
+	runtime, cleanup := startRuntime(t, simulator.FailureProfile{})
+	defer cleanup()
+	dataQuery := appstate.DataWorkspaceQuery{CorrelationID: "data-runtime", Generation: 1, Scenario: appstate.DataScenarioNormal}
+	if !runtime.Enqueue(appstate.QueryDataWorkspaceEffect{ID: "data-runtime", Query: dataQuery}) {
+		t.Fatal("Data workflow enqueue failed")
+	}
+	action := waitAction(t, runtime.Actions())
+	clientAction, ok := action.(appstate.ClientMessageAction)
+	if !ok {
+		t.Fatalf("Data action = %T", action)
+	}
+	if _, ok := clientAction.Message.(appstate.DataWorkspaceMessage); !ok {
+		t.Fatalf("Data message = %T", clientAction.Message)
+	}
+	experimentQuery := appstate.ExperimentQuery{CorrelationID: "experiments-runtime", Generation: 1, Scenario: appstate.ExperimentScenarioNormal}
+	if !runtime.Enqueue(appstate.QueryExperimentsEffect{ID: "experiments-runtime", Query: experimentQuery}) {
+		t.Fatal("Experiments workflow enqueue failed")
+	}
+	action = waitAction(t, runtime.Actions())
+	clientAction, ok = action.(appstate.ClientMessageAction)
+	if !ok {
+		t.Fatalf("Experiments action = %T", action)
+	}
+	if _, ok := clientAction.Message.(appstate.ExperimentWorkspaceMessage); !ok {
+		t.Fatalf("Experiments message = %T", clientAction.Message)
+	}
+}
+
+func TestRuntimeCancelsDataAndReportsExperimentSaturation(t *testing.T) {
+	client, err := simulator.NewDemoCoordinator(simulator.Options{Seed: 89, Clock: appstate.FixedClock{Time: fixedTime()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	runtime, err := effects.Start(ctx, client, effects.NewMemoryLayoutStore(), effects.Config{Clock: appstate.FixedClock{Time: fixedTime()}, MaxConcurrent: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer runtime.Close()
+	loading := appstate.DataWorkspaceQuery{CorrelationID: "data-loading", Generation: 1, Scenario: appstate.DataScenarioLoading}
+	if !runtime.Enqueue(appstate.QueryDataWorkspaceEffect{ID: "data-loading", Query: loading}) {
+		t.Fatal("loading enqueue failed")
+	}
+	experiment := appstate.ExperimentQuery{CorrelationID: "experiment-busy", Generation: 1, Scenario: appstate.ExperimentScenarioNormal}
+	if !runtime.Enqueue(appstate.QueryExperimentsEffect{ID: "experiment-busy", Query: experiment}) {
+		t.Fatal("busy enqueue failed")
+	}
+	for {
+		action := waitAction(t, runtime.Actions())
+		failed, ok := action.(appstate.ExperimentQueryFailedAction)
+		if ok {
+			if failed.Error.Code != appstate.ErrorEffectBusy {
+				t.Fatalf("saturation error = %+v", failed.Error)
+			}
+			break
+		}
+	}
+	if !runtime.Enqueue(appstate.CancelDataEffect{ID: "cancel-data", Generation: 1}) {
+		t.Fatal("cancel enqueue failed")
+	}
+	for {
+		action := waitAction(t, runtime.Actions())
+		cancelled, ok := action.(appstate.DataQueryCancelledAction)
+		if ok && cancelled.Generation == 1 {
+			break
+		}
+	}
+}
+
+func TestRuntimeCoalescesAndLoadsExperimentDraft(t *testing.T) {
+	client, err := simulator.NewDemoCoordinator(simulator.Options{Seed: 97, Clock: appstate.FixedClock{Time: fixedTime()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	draftStore := effects.NewMemoryExperimentDraftStore()
+	runtime, err := effects.Start(ctx, client, effects.NewMemoryLayoutStore(), effects.Config{Clock: appstate.FixedClock{Time: fixedTime()}, DraftStore: draftStore})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer runtime.Close()
+	draft := appstate.ExperimentDraft{Revision: 1, Name: "autosave"}
+	if !runtime.Enqueue(appstate.PersistExperimentDraftEffect{ID: "draft-save", Revision: 1, Draft: draft}) {
+		t.Fatal("draft save enqueue failed")
+	}
+	if _, ok := waitAction(t, runtime.Actions()).(appstate.ExperimentDraftPersistedAction); !ok {
+		t.Fatal("draft persisted action missing")
+	}
+	if !runtime.Enqueue(appstate.LoadExperimentDraftEffect{ID: "draft-load", BaseRevision: 0}) {
+		t.Fatal("draft load enqueue failed")
+	}
+	loaded, ok := waitAction(t, runtime.Actions()).(appstate.ExperimentDraftLoadedAction)
+	if !ok || loaded.Draft.Revision != 1 || loaded.Draft.Name != "autosave" {
+		t.Fatalf("draft loaded action = %#v", loaded)
+	}
+}
+
 func runtimeResearchQuery() appstate.ResearchQuery {
 	return appstate.ResearchQuery{
 		CorrelationID: "research-1", GroupID: "link-default-research", Generation: 1,

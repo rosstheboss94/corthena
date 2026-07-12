@@ -13,6 +13,19 @@ Default panels are the catalog table, coverage timeline, import and validation q
 
 Users can import files, choose append or range replacement, inspect validation failures, and select the active dataset context.
 
+Import requests use typed source kind, adjustment policy, symbols, interval,
+mode, and optional UTC replacement bounds. Validation completes before a
+catalog mutation. A successful import atomically publishes exactly one new
+dataset revision and implementation fingerprint; rejected duplicate,
+malformed, or out-of-range input remains visible in the queue and logs without
+changing the prior revision. Dataset selection uses stable identities and
+refreshes dependent workspace context without exposing mutable simulator data.
+
+Catalog queries and imports run through bounded effects with cancellation,
+correlation, and generation identities. Panels retain the last accepted
+snapshot while rendering loading, empty, failure/retry, degraded, recovered,
+canceled, and saturated states in place.
+
 ## Research
 
 Default panels are the primary OHLCV chart, feature browser, series inspector, target preview, feature/target distributions, and row-level data table.
@@ -48,6 +61,21 @@ Default panels are the experiment list, searchable configuration section tree, c
 The editor is panel-based rather than a wizard. It configures dataset, features, target, split, model, portfolio, and optional sweep. Drafts autosave through background effects. Submission validates through the coordinator and creates an immutable experiment definition.
 
 Custom feature selection shows compiled registry name, semantic version, lookback, output schema, and implementation fingerprint. The UI never accepts source paths or runtime scripts.
+
+Draft validation is typed and section-aware. It checks the selected dataset
+revision and fingerprint, unique compiled features, forward target, walk-forward
+split, purge of at least the target horizon, bounded model and sweep settings,
+finite portfolio values, and CPU limits. Resource estimates are deterministic
+for the same validated draft. Invalid drafts remain editable and autosavable
+but cannot be submitted.
+
+Local drafts use a strict schema-versioned document, revision-aware coalesced
+background writes, atomic replacement, unknown-field rejection, invalid-file
+quarantine, and default fallback. A late load or stale save cannot overwrite a
+newer edit. Submission is idempotent by command identity and captures an
+immutable experiment definition with the accepted dataset revision,
+fingerprint, compiled feature identities, and complete configuration; later
+catalog changes do not rewrite accepted definitions.
 
 ## Jobs
 

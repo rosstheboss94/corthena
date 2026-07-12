@@ -61,16 +61,25 @@ No filesystem, database, network, Arrow decoding, or training operation runs on 
   explicit observation and future-target timestamps, virtual
   row pages, stable selections, layer visibility, stale-result state, and
   typed loading/failure/recovery conditions.
+- `DataWorkspaceState`: generation-ordered catalog snapshots, stable dataset
+  selection, import queue and logs, coverage metadata, typed validation
+  diagnostics, correlation identities, and loading/failure/recovery state.
+- `ExperimentWorkspaceState`: immutable experiment definitions, a typed
+  sectioned draft, compiled-feature metadata, validation issues, deterministic
+  resource estimates, submission state, and revision-aware autosave state.
 
 Switches over closed variants include a default branch that reports an invariant violation. Serialized discriminators are validated before constructing internal variants. Native Raylib, Raygui, Arrow, Windows, and SQLite values stay inside adapters.
 
-The pre-coordinator demo implements Research through the same narrow
-`FrontendClient` and effects runtime used by the shell. Superseding and hidden
-workspace requests are canceled by link group; generation checks reject stale
-completions. Demo preparation, feature/target calculation, LOD, sorting,
-filtering, and pagination run on bounded background workers. This internal
-demo contract does not define coordinator HTTP endpoints; the public API
-remains owned by `specs/api.md`.
+The pre-coordinator demo implements Research, Data, and Experiments through the
+same narrow `FrontendClient` and effects runtime used by the shell. Superseding
+and hidden workspace requests are canceled by link group or workflow;
+generation checks reject stale completions. Demo preparation, feature/target
+calculation, LOD, sorting, filtering, pagination, catalog/import validation,
+experiment evaluation and submission, and draft persistence run on bounded
+background workers. Import publication and experiment submission are atomic;
+accepted experiment definitions remain immutable when the catalog changes.
+This internal demo contract does not define coordinator HTTP endpoints; the
+public API remains owned by `specs/api.md`.
 
 ## Dock manager
 

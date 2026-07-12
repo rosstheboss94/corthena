@@ -9,7 +9,11 @@ import (
 // runtime. Implementations may be the demo coordinator or a real Go client.
 type FrontendClient interface {
 	Snapshot(context.Context, SnapshotRequest) (SnapshotMessage, error)
-	SubmitExperiment(context.Context, SubmitExperimentCommand) (JobUpdateMessage, error)
+	DataWorkspace(context.Context, DataWorkspaceQuery) (DataWorkspaceMessage, error)
+	ImportData(context.Context, DataImportRequest) (DataWorkspaceMessage, error)
+	Experiments(context.Context, ExperimentQuery) (ExperimentWorkspaceMessage, error)
+	EvaluateExperiment(context.Context, ExperimentEvaluationRequest) (ExperimentEvaluationMessage, error)
+	SubmitExperiment(context.Context, SubmitExperimentCommand) (ExperimentSubmittedMessage, error)
 	ControlJob(context.Context, JobControlCommand) (JobUpdateMessage, error)
 	RunInference(context.Context, InferenceCommand) (InferenceUpdateMessage, error)
 	Research(context.Context, ResearchQuery) (ResearchResponseMessage, error)
@@ -30,14 +34,18 @@ type EventSubscription struct {
 
 // ExperimentDraft is a typed frontend experiment submission draft.
 type ExperimentDraft struct {
-	Name         string
-	DatasetID    DatasetID
-	Features     []FeatureName
-	Target       TargetSpec
-	Model        ModelSpec
-	Split        SplitSpec
-	Portfolio    PortfolioSpec
-	RequestedCPU int
+	Revision           uint64          `json:"revision"`
+	Name               string          `json:"name"`
+	DatasetID          DatasetID       `json:"dataset_id"`
+	DatasetRevision    uint64          `json:"dataset_revision"`
+	DatasetFingerprint string          `json:"dataset_fingerprint"`
+	Features           []FeatureName   `json:"features"`
+	Target             TargetSpec      `json:"target"`
+	Model              ModelSpec       `json:"model"`
+	Split              SplitSpec       `json:"split"`
+	Portfolio          PortfolioSpec   `json:"portfolio"`
+	Sweep              ExperimentSweep `json:"sweep"`
+	RequestedCPU       int             `json:"requested_cpu"`
 }
 
 // Clone returns an independent copy.
@@ -50,7 +58,9 @@ func (draft ExperimentDraft) Clone() ExperimentDraft {
 type SubmitExperimentCommand struct {
 	CorrelationID CorrelationID
 	CommandID     CorrelationID
+	Generation    uint64
 	Draft         ExperimentDraft
+	Scenario      ExperimentScenario
 }
 
 // JobControl is a typed job control command.
@@ -124,6 +134,8 @@ type DatasetSummary struct {
 	End         time.Time
 	Revision    uint64
 	Fingerprint string
+	Adjustment  string
+	ImportedAt  time.Time
 }
 
 // Clone returns an independent copy.
@@ -131,32 +143,33 @@ func (dataset DatasetSummary) Clone() DatasetSummary {
 	dataset.Symbols = cloneSymbols(dataset.Symbols)
 	dataset.Start = dataset.Start.UTC()
 	dataset.End = dataset.End.UTC()
+	dataset.ImportedAt = dataset.ImportedAt.UTC()
 	return dataset
 }
 
 // TargetSpec describes a frontend target configuration.
 type TargetSpec struct {
-	Kind        string
-	HorizonBars int
-	LogReturn   bool
+	Kind        string `json:"kind"`
+	HorizonBars int    `json:"horizon_bars"`
+	LogReturn   bool   `json:"log_return"`
 }
 
 // SplitSpec describes a frontend walk-forward split configuration.
 type SplitSpec struct {
-	Kind             string
-	TrainBars        int
-	ValidationBars   int
-	TestBars         int
-	PurgeBars        int
-	EmbargoBars      int
-	ExpandingWindows bool
+	Kind             string `json:"kind"`
+	TrainBars        int    `json:"train_bars"`
+	ValidationBars   int    `json:"validation_bars"`
+	TestBars         int    `json:"test_bars"`
+	PurgeBars        int    `json:"purge_bars"`
+	EmbargoBars      int    `json:"embargo_bars"`
+	ExpandingWindows bool   `json:"expanding_windows"`
 }
 
 // PortfolioSpec describes a reference backtest configuration.
 type PortfolioSpec struct {
-	LongQuantile  float64
-	ShortQuantile float64
-	CostBPS       float64
+	LongQuantile  float64 `json:"long_quantile"`
+	ShortQuantile float64 `json:"short_quantile"`
+	CostBPS       float64 `json:"cost_bps"`
 }
 
 // ModelKind is a first-party estimator kind.
@@ -170,13 +183,13 @@ const (
 
 // ModelSpec describes a frontend model configuration.
 type ModelSpec struct {
-	Kind            ModelKind
-	MaxDepth        int
-	MinLeafSamples  int
-	EstimatorCount  int
-	HistogramBins   int
-	LearningRateBPS int
-	Seed            uint64
+	Kind            ModelKind `json:"kind"`
+	MaxDepth        int       `json:"max_depth"`
+	MinLeafSamples  int       `json:"min_leaf_samples"`
+	EstimatorCount  int       `json:"estimator_count"`
+	HistogramBins   int       `json:"histogram_bins"`
+	LearningRateBPS int       `json:"learning_rate_bps"`
+	Seed            uint64    `json:"seed"`
 }
 
 // JobState is a coordinator-owned job lifecycle state.

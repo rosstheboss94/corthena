@@ -10,6 +10,7 @@ import (
 
 	"github.com/rosstheboss94/corthena/internal/frontend/appstate"
 	"github.com/rosstheboss94/corthena/internal/frontend/assets"
+	"github.com/rosstheboss94/corthena/internal/frontend/drafts"
 	"github.com/rosstheboss94/corthena/internal/frontend/effects"
 	"github.com/rosstheboss94/corthena/internal/frontend/layouts"
 	"github.com/rosstheboss94/corthena/internal/frontend/nativeui"
@@ -26,9 +27,14 @@ type Options struct {
 	Height    int32
 	// InitialWorkspace selects a deterministic smoke-test entry workspace. An
 	// empty value preserves the normal Data startup.
-	InitialWorkspace appstate.Workspace
-	InitialUIScale   appstate.UIScalePreset
-	ResearchScenario appstate.ResearchScenario
+	InitialWorkspace   appstate.Workspace
+	InitialUIScale     appstate.UIScalePreset
+	ResearchScenario   appstate.ResearchScenario
+	DataScenario       appstate.DataScenario
+	ExperimentScenario appstate.ExperimentScenario
+	// DisableEvents omits the unrelated demo event stream for deterministic
+	// golden capture while retaining snapshot and workspace effects.
+	DisableEvents bool
 	// ResearchLinkedSelection applies a deterministic linked box-selection
 	// preset after the Research catalog context becomes available.
 	ResearchLinkedSelection bool
@@ -66,6 +72,12 @@ func Run(ctx context.Context, options Options) (resultErr error) {
 	if options.ResearchScenario != "" && !options.ResearchScenario.Valid() {
 		return fmt.Errorf("run workstation: unsupported Research scenario %q", options.ResearchScenario)
 	}
+	if options.DataScenario != "" && !options.DataScenario.Valid() {
+		return fmt.Errorf("run workstation: unsupported Data scenario %q", options.DataScenario)
+	}
+	if options.ExperimentScenario != "" && !options.ExperimentScenario.Valid() {
+		return fmt.Errorf("run workstation: unsupported Experiments scenario %q", options.ExperimentScenario)
+	}
 	assetSet, err := assets.Load()
 	if err != nil {
 		return fmt.Errorf("run workstation: %w", err)
@@ -100,11 +112,26 @@ func Run(ctx context.Context, options Options) (resultErr error) {
 	if err != nil {
 		return fmt.Errorf("run workstation: %w", err)
 	}
+	if options.DisableEvents {
+		filtered := make([]appstate.UIEffect, 0, len(startupEffects))
+		for _, effect := range startupEffects {
+			if _, subscription := effect.(appstate.SubscribeClientEventsEffect); !subscription {
+				filtered = append(filtered, effect)
+			}
+		}
+		startupEffects = filtered
+	}
 	if options.InitialUIScale != 0 {
 		state.Preferences.UIScale = options.InitialUIScale
 	}
 	if options.ResearchScenario != "" {
 		state.Research.Scenario = options.ResearchScenario
+	}
+	if options.DataScenario != "" {
+		state.Data.Scenario = options.DataScenario
+	}
+	if options.ExperimentScenario != "" {
+		state.Experiments.Scenario = options.ExperimentScenario
 	}
 	if options.InitialWorkspace != "" && options.InitialWorkspace != state.ActiveWorkspace {
 		var initialEffects []appstate.UIEffect
@@ -144,11 +171,20 @@ func Run(ctx context.Context, options Options) (resultErr error) {
 	if err != nil {
 		return fmt.Errorf("run workstation: create preference store: %w", err)
 	}
+	var draftStore effects.ExperimentDraftStore
+	if options.LayoutDirectory == "" {
+		draftStore, err = drafts.NewUserStore(state.Experiments.Draft)
+	} else {
+		draftStore, err = drafts.NewStore(filepath.Join(options.LayoutDirectory, "experiment-draft.json"), state.Experiments.Draft)
+	}
+	if err != nil {
+		return fmt.Errorf("run workstation: create experiment draft store: %w", err)
+	}
 	effectRuntime, err := effects.Start(
 		ctx,
 		client,
 		layoutStore,
-		effects.Config{Clock: clock, PreferenceStore: preferenceStore},
+		effects.Config{Clock: clock, PreferenceStore: preferenceStore, DraftStore: draftStore},
 	)
 	if err != nil {
 		return fmt.Errorf("run workstation: %w", err)

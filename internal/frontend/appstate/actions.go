@@ -195,6 +195,129 @@ type ResearchQueryCancelledAction struct {
 
 func (ResearchQueryCancelledAction) isUIAction() {}
 
+// RequestDataWorkspaceAction starts or supersedes a Data workspace query.
+type RequestDataWorkspaceAction struct{ Query DataWorkspaceQuery }
+
+func (RequestDataWorkspaceAction) isUIAction() {}
+
+// SetDataScenarioAction selects a deterministic Data workflow condition.
+type SetDataScenarioAction struct{ Scenario DataScenario }
+
+func (SetDataScenarioAction) isUIAction() {}
+
+// SelectDataDatasetAction preserves stable catalog selection.
+type SelectDataDatasetAction struct{ DatasetID DatasetID }
+
+func (SelectDataDatasetAction) isUIAction() {}
+
+// SelectDataImportAction preserves stable import queue selection.
+type SelectDataImportAction struct{ ImportID string }
+
+func (SelectDataImportAction) isUIAction() {}
+
+// SubmitDataImportAction starts one validated atomic simulated import.
+type SubmitDataImportAction struct{ Request DataImportRequest }
+
+func (SubmitDataImportAction) isUIAction() {}
+
+// DataQueryFailedAction records a generation-specific Data failure.
+type DataQueryFailedAction struct {
+	Generation uint64
+	FailedAt   time.Time
+	Error      ErrorSnapshot
+}
+
+func (DataQueryFailedAction) isUIAction() {}
+
+// DataQueryCancelledAction records explicit current-generation cancellation.
+type DataQueryCancelledAction struct {
+	Generation  uint64
+	CancelledAt time.Time
+}
+
+func (DataQueryCancelledAction) isUIAction() {}
+
+// RequestExperimentsAction starts or supersedes an Experiments query.
+type RequestExperimentsAction struct{ Query ExperimentQuery }
+
+func (RequestExperimentsAction) isUIAction() {}
+
+// SetExperimentScenarioAction selects deterministic editor behavior.
+type SetExperimentScenarioAction struct{ Scenario ExperimentScenario }
+
+func (SetExperimentScenarioAction) isUIAction() {}
+
+// UpdateExperimentDraftAction commits one newer typed local draft revision.
+type UpdateExperimentDraftAction struct {
+	Draft     ExperimentDraft
+	UpdatedAt time.Time
+}
+
+func (UpdateExperimentDraftAction) isUIAction() {}
+
+// SelectExperimentSectionAction focuses one configuration tree section.
+type SelectExperimentSectionAction struct{ Section ExperimentSection }
+
+func (SelectExperimentSectionAction) isUIAction() {}
+
+// SelectExperimentDefinitionAction focuses one immutable definition.
+type SelectExperimentDefinitionAction struct{ ExperimentID ExperimentID }
+
+func (SelectExperimentDefinitionAction) isUIAction() {}
+
+// SubmitExperimentAction requests immutable idempotent submission.
+type SubmitExperimentAction struct{ Command SubmitExperimentCommand }
+
+func (SubmitExperimentAction) isUIAction() {}
+
+// ExperimentQueryFailedAction records query/evaluation/submission failure.
+type ExperimentQueryFailedAction struct {
+	Generation uint64
+	FailedAt   time.Time
+	Error      ErrorSnapshot
+}
+
+func (ExperimentQueryFailedAction) isUIAction() {}
+
+// ExperimentQueryCancelledAction records explicit workflow cancellation.
+type ExperimentQueryCancelledAction struct {
+	Generation  uint64
+	CancelledAt time.Time
+}
+
+func (ExperimentQueryCancelledAction) isUIAction() {}
+
+// ExperimentDraftLoadedAction applies a non-stale local draft load.
+type ExperimentDraftLoadedAction struct {
+	EffectID     EffectID
+	BaseRevision uint64
+	Draft        ExperimentDraft
+	LoadedAt     time.Time
+	Recovered    bool
+	Diagnostic   string
+}
+
+func (ExperimentDraftLoadedAction) isUIAction() {}
+
+// ExperimentDraftPersistedAction records successful local autosave.
+type ExperimentDraftPersistedAction struct {
+	EffectID EffectID
+	Revision uint64
+	SavedAt  time.Time
+}
+
+func (ExperimentDraftPersistedAction) isUIAction() {}
+
+// ExperimentDraftPersistenceFailedAction records retryable autosave failure.
+type ExperimentDraftPersistenceFailedAction struct {
+	EffectID EffectID
+	Revision uint64
+	FailedAt time.Time
+	Error    ErrorSnapshot
+}
+
+func (ExperimentDraftPersistenceFailedAction) isUIAction() {}
+
 // LayoutsLoadedAction applies an asynchronous startup or named-layout load.
 // BaseRevision prevents a late load from overwriting newer local mutations.
 type LayoutsLoadedAction struct {
@@ -369,3 +492,79 @@ type CancelResearchEffect struct {
 }
 
 func (CancelResearchEffect) isUIEffect() {}
+
+// QueryDataWorkspaceEffect prepares Data catalog/import state off-thread.
+type QueryDataWorkspaceEffect struct {
+	ID    EffectID
+	Query DataWorkspaceQuery
+}
+
+func (QueryDataWorkspaceEffect) isUIEffect() {}
+
+// ImportDataEffect performs one simulated atomic import off-thread.
+type ImportDataEffect struct {
+	ID      EffectID
+	Request DataImportRequest
+}
+
+func (ImportDataEffect) isUIEffect() {}
+
+// CancelDataEffect cancels the current Data generation.
+type CancelDataEffect struct {
+	ID         EffectID
+	Generation uint64
+}
+
+func (CancelDataEffect) isUIEffect() {}
+
+// QueryExperimentsEffect prepares experiment definitions and descriptors.
+type QueryExperimentsEffect struct {
+	ID    EffectID
+	Query ExperimentQuery
+}
+
+func (QueryExperimentsEffect) isUIEffect() {}
+
+// EvaluateExperimentEffect validates and estimates a draft off-thread.
+type EvaluateExperimentEffect struct {
+	ID      EffectID
+	Request ExperimentEvaluationRequest
+}
+
+func (EvaluateExperimentEffect) isUIEffect() {}
+
+// SubmitExperimentEffect freezes one valid immutable definition.
+type SubmitExperimentEffect struct {
+	ID      EffectID
+	Command SubmitExperimentCommand
+}
+
+func (SubmitExperimentEffect) isUIEffect() {}
+
+// CancelExperimentEffect cancels one current experiment generation.
+type CancelExperimentEffect struct {
+	ID         EffectID
+	Generation uint64
+}
+
+func (CancelExperimentEffect) isUIEffect() {}
+
+// LoadExperimentDraftEffect loads local draft autosave off-thread.
+type LoadExperimentDraftEffect struct {
+	ID           EffectID
+	BaseRevision uint64
+	Defaults     ExperimentDraft
+	RequestedAt  time.Time
+}
+
+func (LoadExperimentDraftEffect) isUIEffect() {}
+
+// PersistExperimentDraftEffect coalesces one immutable draft revision.
+type PersistExperimentDraftEffect struct {
+	ID        EffectID
+	Revision  uint64
+	Draft     ExperimentDraft
+	Requested time.Time
+}
+
+func (PersistExperimentDraftEffect) isUIEffect() {}
