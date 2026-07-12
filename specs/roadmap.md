@@ -94,6 +94,8 @@ Build simulated catalog/import workflows and the experiment list, configuration 
 
 ## 8. Jobs and Results
 
+**Implementation status:** Implemented. Typed generation-ordered Jobs and Results workflows, a 259-row stable-ID virtual queue, selected-job progress, live metrics, CPU leases and worker resources, process health, durable checkpoints, structured logs, legal pause/resume/cancel controls, immutable multi-run comparison, validation-versus-test metrics, equity/drawdown, fold timelines, IC and prediction distributions, prediction/market overlays, configuration diffs, lifecycle and stale-generation tests, race-safe bounded effects, and the deterministic 60-entry Raylib Phase 8 golden matrix pass on Windows/amd64. Completion is blocked only by `govulncheck` on Go 1.25.11 standard-library vulnerability GO-2026-5856, which the tool reports fixed in Go 1.25.12.
+
 Build the virtualized queue, progress, metrics, resources, process status, checkpoints, logs, valid job controls, run comparisons, charts, distributions, overlays, and configuration diff.
 
 **Done when:** deterministic jobs cover success, pause/resume, cancellation, interruption, and failure with immutable results.

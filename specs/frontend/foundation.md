@@ -2,7 +2,7 @@
 
 **Status:** Authoritative  
 **Owner:** Frontend  
-**Last updated:** 2026-07-11
+**Last updated:** 2026-07-12
 **Related:** [Technology stack](../technology-stack.md), [Workspaces](workspaces.md), [Visualization](visualization.md), [API](../api.md), [ADR 0004](../decisions/0004-raylib-dockable-interface.md)
 
 ## Technology constraints
@@ -67,16 +67,26 @@ No filesystem, database, network, Arrow decoding, or training operation runs on 
 - `ExperimentWorkspaceState`: immutable experiment definitions, a typed
   sectioned draft, compiled-feature metadata, validation issues, deterministic
   resource estimates, submission state, and revision-aware autosave state.
+- `JobsWorkspaceState`: generation-ordered queue requests, stable selected job,
+  ordered stage progress, live metric series, bounded worker and CPU-lease
+  telemetry, process health, checkpoint status, structured logs, pending typed
+  control state, and deterministic lifecycle scenarios.
+- `ResultsWorkspaceState`: generation-ordered filtered run requests, up to four
+  stable comparison identities, immutable fold and metric details, equity and
+  drawdown series, distributions, prediction overlays, configuration values,
+  and explicit loading/failure/degraded/recovery state.
 
 Switches over closed variants include a default branch that reports an invariant violation. Serialized discriminators are validated before constructing internal variants. Native Raylib, Raygui, Arrow, Windows, and SQLite values stay inside adapters.
 
-The pre-coordinator demo implements Research, Data, and Experiments through the
+The pre-coordinator demo implements Research, Data, Experiments, Jobs, and Results through the
 same narrow `FrontendClient` and effects runtime used by the shell. Superseding
 and hidden workspace requests are canceled by link group or workflow;
 generation checks reject stale completions. Demo preparation, feature/target
 calculation, LOD, sorting, filtering, pagination, catalog/import validation,
 experiment evaluation and submission, and draft persistence run on bounded
-background workers. Import publication and experiment submission are atomic;
+background workers. Jobs and Results queries, controls, reconciliation, and
+scenario preparation use the same bounded workflow ownership and reject stale
+generations. Import publication and experiment submission are atomic;
 accepted experiment definitions remain immutable when the catalog changes.
 This internal demo contract does not define coordinator HTTP endpoints; the
 public API remains owned by `specs/api.md`.

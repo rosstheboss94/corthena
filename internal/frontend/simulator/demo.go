@@ -21,6 +21,8 @@ type DelayProfile struct {
 	Research    time.Duration
 	Data        time.Duration
 	Experiments time.Duration
+	Jobs        time.Duration
+	Results     time.Duration
 }
 
 // FailureProfile configures deterministic simulated failures.
@@ -33,6 +35,8 @@ type FailureProfile struct {
 	Research          bool
 	Data              bool
 	Experiments       bool
+	Jobs              bool
+	Results           bool
 }
 
 // Options configures a DemoCoordinator.
@@ -59,6 +63,9 @@ type DemoCoordinator struct {
 	logs          []appstate.DataLogEntry
 	definitions   []appstate.ExperimentDefinition
 	submissions   map[appstate.CorrelationID]appstate.ExperimentDefinition
+	jobs          appstate.JobsWorkspaceSnapshot
+	results       appstate.ResultsWorkspaceSnapshot
+	jobCommands   map[appstate.CorrelationID]appstate.JobUpdateMessage
 }
 
 // NewDemoCoordinator creates a seeded demo client.
@@ -89,6 +96,7 @@ func NewDemoCoordinator(options Options) (*DemoCoordinator, error) {
 		researchCache: researchCache,
 		definitions:   buildDemoExperimentDefinitions(now, snapshot.Datasets),
 		submissions:   make(map[appstate.CorrelationID]appstate.ExperimentDefinition),
+		jobCommands:   make(map[appstate.CorrelationID]appstate.JobUpdateMessage),
 	}, nil
 }
 
@@ -115,38 +123,7 @@ func (client *DemoCoordinator) ControlJob(
 	ctx context.Context,
 	command appstate.JobControlCommand,
 ) (appstate.JobUpdateMessage, error) {
-	if err := client.wait(ctx, client.delays.Commands); err != nil {
-		return appstate.JobUpdateMessage{}, err
-	}
-	if client.failures.Commands {
-		return appstate.JobUpdateMessage{}, failure("demo command failed", command.CorrelationID, true)
-	}
-	now := client.baseTime().Add(6 * time.Minute)
-	state := appstate.JobPaused
-	stage := "paused"
-	switch command.Control {
-	case appstate.JobControlPause:
-		state = appstate.JobPauseRequested
-		stage = "pause requested"
-	case appstate.JobControlResume:
-		state = appstate.JobRunning
-		stage = "resuming"
-	case appstate.JobControlCancel:
-		state = appstate.JobCancelled
-		stage = "cancelled"
-	default:
-		return appstate.JobUpdateMessage{}, failure("unsupported job control", command.CorrelationID, false)
-	}
-	return appstate.JobUpdateMessage{
-		Event: event("evt-command-control", "job.updated", now, command.CorrelationID),
-		Job: appstate.JobSummary{
-			ID:             command.JobID,
-			State:          state,
-			ProgressPermil: 500,
-			Stage:          stage,
-			UpdatedAt:      now,
-		},
-	}, nil
+	return client.controlJob(ctx, command)
 }
 
 // RunInference returns a deterministic queued inference update.
@@ -644,6 +621,10 @@ func messageEventID(message appstate.ClientMessage) appstate.EventID {
 	case appstate.ExperimentEvaluationMessage:
 		return message.Event.ID
 	case appstate.ExperimentSubmittedMessage:
+		return message.Event.ID
+	case appstate.JobsWorkspaceMessage:
+		return message.Event.ID
+	case appstate.ResultsWorkspaceMessage:
 		return message.Event.ID
 	default:
 		return ""

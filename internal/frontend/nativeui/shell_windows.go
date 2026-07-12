@@ -614,6 +614,14 @@ func (renderer *shellRenderer) drawPanelBody(state appstate.AppState, panel apps
 		renderer.drawExperimentPanel(state, panel, content)
 		return
 	}
+	if isJobsPanel(panel.Type) {
+		renderer.drawJobsPanel(state, panel, content)
+		return
+	}
+	if isResultsPanel(panel.Type) {
+		renderer.drawResultsPanel(state, panel, content)
+		return
+	}
 	switch state.ActiveWorkspace {
 	case appstate.WorkspaceData:
 		renderer.drawDatasetRows(state, content)

@@ -32,6 +32,8 @@ type Options struct {
 	ResearchScenario   appstate.ResearchScenario
 	DataScenario       appstate.DataScenario
 	ExperimentScenario appstate.ExperimentScenario
+	JobsScenario       appstate.JobsScenario
+	ResultsScenario    appstate.ResultsScenario
 	// DisableEvents omits the unrelated demo event stream for deterministic
 	// golden capture while retaining snapshot and workspace effects.
 	DisableEvents bool
@@ -77,6 +79,12 @@ func Run(ctx context.Context, options Options) (resultErr error) {
 	}
 	if options.ExperimentScenario != "" && !options.ExperimentScenario.Valid() {
 		return fmt.Errorf("run workstation: unsupported Experiments scenario %q", options.ExperimentScenario)
+	}
+	if options.JobsScenario != "" && !options.JobsScenario.Valid() {
+		return fmt.Errorf("run workstation: unsupported Jobs scenario %q", options.JobsScenario)
+	}
+	if options.ResultsScenario != "" && !options.ResultsScenario.Valid() {
+		return fmt.Errorf("run workstation: unsupported Results scenario %q", options.ResultsScenario)
 	}
 	assetSet, err := assets.Load()
 	if err != nil {
@@ -132,6 +140,12 @@ func Run(ctx context.Context, options Options) (resultErr error) {
 	}
 	if options.ExperimentScenario != "" {
 		state.Experiments.Scenario = options.ExperimentScenario
+	}
+	if options.JobsScenario != "" {
+		state.JobsWorkspace.Scenario = options.JobsScenario
+	}
+	if options.ResultsScenario != "" {
+		state.ResultsWorkspace.Scenario = options.ResultsScenario
 	}
 	if options.InitialWorkspace != "" && options.InitialWorkspace != state.ActiveWorkspace {
 		var initialEffects []appstate.UIEffect

@@ -318,6 +318,83 @@ type ExperimentDraftPersistenceFailedAction struct {
 
 func (ExperimentDraftPersistenceFailedAction) isUIAction() {}
 
+// RequestJobsWorkspaceAction starts or supersedes a Jobs query.
+type RequestJobsWorkspaceAction struct{ Query JobsWorkspaceQuery }
+
+func (RequestJobsWorkspaceAction) isUIAction() {}
+
+// SetJobsScenarioAction selects one deterministic lifecycle demonstration.
+type SetJobsScenarioAction struct{ Scenario JobsScenario }
+
+func (SetJobsScenarioAction) isUIAction() {}
+
+// SelectJobAction preserves stable job selection across queue refreshes.
+type SelectJobAction struct{ JobID JobID }
+
+func (SelectJobAction) isUIAction() {}
+
+// ControlJobAction dispatches one legal typed job transition.
+type ControlJobAction struct{ Command JobControlCommand }
+
+func (ControlJobAction) isUIAction() {}
+
+// JobsQueryFailedAction records a generation-specific Jobs failure.
+type JobsQueryFailedAction struct {
+	Generation uint64
+	FailedAt   time.Time
+	Error      ErrorSnapshot
+}
+
+func (JobsQueryFailedAction) isUIAction() {}
+
+// JobsQueryCancelledAction records current-generation cancellation.
+type JobsQueryCancelledAction struct {
+	Generation  uint64
+	CancelledAt time.Time
+}
+
+func (JobsQueryCancelledAction) isUIAction() {}
+
+// RequestResultsWorkspaceAction starts or supersedes a Results query.
+type RequestResultsWorkspaceAction struct{ Query ResultsWorkspaceQuery }
+
+func (RequestResultsWorkspaceAction) isUIAction() {}
+
+// SetResultsScenarioAction selects a deterministic Results workflow condition.
+type SetResultsScenarioAction struct{ Scenario ResultsScenario }
+
+func (SetResultsScenarioAction) isUIAction() {}
+
+// SelectResultRunAction sets or toggles a stable comparison run.
+type SelectResultRunAction struct {
+	RunID  RunID
+	Toggle bool
+}
+
+func (SelectResultRunAction) isUIAction() {}
+
+// SetResultsFilterAction updates the run browser filter and refreshes results.
+type SetResultsFilterAction struct{ Filter string }
+
+func (SetResultsFilterAction) isUIAction() {}
+
+// ResultsQueryFailedAction records a generation-specific Results failure.
+type ResultsQueryFailedAction struct {
+	Generation uint64
+	FailedAt   time.Time
+	Error      ErrorSnapshot
+}
+
+func (ResultsQueryFailedAction) isUIAction() {}
+
+// ResultsQueryCancelledAction records current-generation cancellation.
+type ResultsQueryCancelledAction struct {
+	Generation  uint64
+	CancelledAt time.Time
+}
+
+func (ResultsQueryCancelledAction) isUIAction() {}
+
 // LayoutsLoadedAction applies an asynchronous startup or named-layout load.
 // BaseRevision prevents a late load from overwriting newer local mutations.
 type LayoutsLoadedAction struct {
@@ -568,3 +645,43 @@ type PersistExperimentDraftEffect struct {
 }
 
 func (PersistExperimentDraftEffect) isUIEffect() {}
+
+// QueryJobsWorkspaceEffect prepares job queue telemetry off-thread.
+type QueryJobsWorkspaceEffect struct {
+	ID    EffectID
+	Query JobsWorkspaceQuery
+}
+
+func (QueryJobsWorkspaceEffect) isUIEffect() {}
+
+// ControlJobEffect sends one validated idempotent job control command.
+type ControlJobEffect struct {
+	ID      EffectID
+	Command JobControlCommand
+}
+
+func (ControlJobEffect) isUIEffect() {}
+
+// CancelJobsEffect cancels the current Jobs generation.
+type CancelJobsEffect struct {
+	ID         EffectID
+	Generation uint64
+}
+
+func (CancelJobsEffect) isUIEffect() {}
+
+// QueryResultsWorkspaceEffect prepares immutable result comparisons off-thread.
+type QueryResultsWorkspaceEffect struct {
+	ID    EffectID
+	Query ResultsWorkspaceQuery
+}
+
+func (QueryResultsWorkspaceEffect) isUIEffect() {}
+
+// CancelResultsEffect cancels the current Results generation.
+type CancelResultsEffect struct {
+	ID         EffectID
+	Generation uint64
+}
+
+func (CancelResultsEffect) isUIEffect() {}

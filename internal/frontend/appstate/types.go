@@ -274,6 +274,11 @@ const (
 	ErrorDataCancelled       ErrorCode = "data_cancelled"
 	ErrorExperimentFailed    ErrorCode = "experiment_failed"
 	ErrorExperimentCancelled ErrorCode = "experiment_cancelled"
+	ErrorJobsFailed          ErrorCode = "jobs_failed"
+	ErrorJobsCancelled       ErrorCode = "jobs_cancelled"
+	ErrorResultsFailed       ErrorCode = "results_failed"
+	ErrorResultsCancelled    ErrorCode = "results_cancelled"
+	ErrorJobControlRejected  ErrorCode = "job_control_rejected"
 	ErrorValidation          ErrorCode = "validation"
 )
 
@@ -436,6 +441,8 @@ type AppState struct {
 	Research              ResearchWorkspaceState
 	Data                  DataWorkspaceState
 	Experiments           ExperimentsWorkspaceState
+	JobsWorkspace         JobsWorkspaceState
+	ResultsWorkspace      ResultsWorkspaceState
 	Overlays              OverlayState
 	Persistence           PersistenceState
 	PreferencePersistence PersistenceState
@@ -455,6 +462,8 @@ func (state AppState) Clone() AppState {
 	state.Research = state.Research.Clone()
 	state.Data = state.Data.Clone()
 	state.Experiments = state.Experiments.Clone()
+	state.JobsWorkspace = state.JobsWorkspace.Clone()
+	state.ResultsWorkspace = state.ResultsWorkspace.Clone()
 	state.Overlays = state.Overlays.Clone()
 	return state
 }
@@ -499,12 +508,14 @@ func NewInitialState(clock Clock, ids IDSource) (AppState, []UIEffect, error) {
 				UpdatedAt: now,
 			},
 		},
-		Layouts:        layouts,
-		DefaultLayouts: cloneLayouts(layouts),
-		Preferences:    DefaultPreferences(),
-		Research:       DefaultResearchWorkspaceState(),
-		Data:           DefaultDataWorkspaceState(),
-		Experiments:    DefaultExperimentsWorkspaceState(),
+		Layouts:          layouts,
+		DefaultLayouts:   cloneLayouts(layouts),
+		Preferences:      DefaultPreferences(),
+		Research:         DefaultResearchWorkspaceState(),
+		Data:             DefaultDataWorkspaceState(),
+		Experiments:      DefaultExperimentsWorkspaceState(),
+		JobsWorkspace:    DefaultJobsWorkspaceState(),
+		ResultsWorkspace: DefaultResultsWorkspaceState(),
 	}
 	effects := []UIEffect{
 		LoadExperimentDraftEffect{

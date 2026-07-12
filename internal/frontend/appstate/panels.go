@@ -31,12 +31,14 @@ const (
 	PanelLiveMetrics         PanelType = "live_metrics"
 	PanelWorkerResources     PanelType = "worker_resources"
 	PanelProcessStatus       PanelType = "process_status"
+	PanelCheckpointStatus    PanelType = "checkpoint_status"
 	PanelJobLogs             PanelType = "job_logs"
 	PanelRunBrowser          PanelType = "run_browser"
 	PanelMetricComparison    PanelType = "metric_comparison"
 	PanelEquityChart         PanelType = "equity_chart"
 	PanelFoldTimeline        PanelType = "fold_timeline"
 	PanelPredictionOverlay   PanelType = "prediction_overlay"
+	PanelResultDistributions PanelType = "result_distributions"
 	PanelConfigurationDiff   PanelType = "configuration_diff"
 	PanelModelRegistry       PanelType = "model_registry"
 	PanelAliasHistory        PanelType = "alias_history"
@@ -128,6 +130,8 @@ func PanelDescriptorFor(panelType PanelType) (PanelDescriptor, error) {
 		return descriptor(panelType, "Workers", "cpu", PanelSingleton, 320, 160), nil
 	case PanelProcessStatus:
 		return descriptor(panelType, "Processes", "server", PanelSingleton, 320, 160), nil
+	case PanelCheckpointStatus:
+		return descriptor(panelType, "Checkpoints", "save", PanelMultiple, 320, 180), nil
 	case PanelJobLogs:
 		return descriptor(panelType, "Logs", "scroll-text", PanelMultiple, 320, 180), nil
 	case PanelRunBrowser:
@@ -140,6 +144,8 @@ func PanelDescriptorFor(panelType PanelType) (PanelDescriptor, error) {
 		return descriptor(panelType, "Folds", "calendar-range", PanelMultiple, 320, 180, LinkRun, LinkTimeRange), nil
 	case PanelPredictionOverlay:
 		return descriptor(panelType, "Predictions", "layers", PanelMultiple, 420, 220, LinkRun, LinkSymbols, LinkTimeRange), nil
+	case PanelResultDistributions:
+		return descriptor(panelType, "Distributions", "bar-chart-3", PanelMultiple, 320, 220, LinkRun), nil
 	case PanelConfigurationDiff:
 		return descriptor(panelType, "Config Diff", "diff", PanelMultiple, 360, 220, LinkRun), nil
 	case PanelModelRegistry:
@@ -400,6 +406,36 @@ func DefaultWorkspaceLayout(workspace Workspace, ids IDSource) (WorkspaceLayout,
 			Second: TabStackNode{ID: DockNodeID("dock-research-rows"), Active: panels[5].ID, Panels: clonePanels(panels[5:6])},
 		}
 	}
+	if workspace == WorkspaceJobs && len(panels) == 7 {
+		root = SplitNode{
+			ID: DockNodeID("dock-root-jobs"), Orientation: SplitVertical, Ratio: 0.65,
+			First: SplitNode{
+				ID: DockNodeID("dock-jobs-primary"), Orientation: SplitHorizontal, Ratio: 0.58,
+				First:  TabStackNode{ID: DockNodeID("dock-jobs-queue"), Active: panels[0].ID, Panels: clonePanels(panels[0:1])},
+				Second: TabStackNode{ID: DockNodeID("dock-jobs-detail"), Active: panels[1].ID, Panels: clonePanels(panels[1:3])},
+			},
+			Second: SplitNode{
+				ID: DockNodeID("dock-jobs-diagnostics"), Orientation: SplitHorizontal, Ratio: 0.52,
+				First:  TabStackNode{ID: DockNodeID("dock-jobs-runtime"), Active: panels[3].ID, Panels: clonePanels(panels[3:6])},
+				Second: TabStackNode{ID: DockNodeID("dock-jobs-logs"), Active: panels[6].ID, Panels: clonePanels(panels[6:7])},
+			},
+		}
+	}
+	if workspace == WorkspaceResults && len(panels) == 7 {
+		root = SplitNode{
+			ID: DockNodeID("dock-root-results"), Orientation: SplitVertical, Ratio: 0.64,
+			First: SplitNode{
+				ID: DockNodeID("dock-results-primary"), Orientation: SplitHorizontal, Ratio: 0.28,
+				First:  TabStackNode{ID: DockNodeID("dock-results-browser"), Active: panels[0].ID, Panels: clonePanels(panels[0:1])},
+				Second: TabStackNode{ID: DockNodeID("dock-results-charts"), Active: panels[1].ID, Panels: clonePanels(panels[1:5])},
+			},
+			Second: SplitNode{
+				ID: DockNodeID("dock-results-inspectors"), Orientation: SplitHorizontal, Ratio: 0.54,
+				First:  TabStackNode{ID: DockNodeID("dock-results-distributions"), Active: panels[5].ID, Panels: clonePanels(panels[5:6])},
+				Second: TabStackNode{ID: DockNodeID("dock-results-diff"), Active: panels[6].ID, Panels: clonePanels(panels[6:7])},
+			},
+		}
+	}
 	return WorkspaceLayout{
 		SchemaVersion: LayoutSchemaVersion,
 		Workspace:     workspace,
@@ -456,6 +492,7 @@ func defaultPanelTypes(workspace Workspace) ([]PanelType, error) {
 			PanelLiveMetrics,
 			PanelWorkerResources,
 			PanelProcessStatus,
+			PanelCheckpointStatus,
 			PanelJobLogs,
 		}, nil
 	case WorkspaceResults:
@@ -465,6 +502,7 @@ func defaultPanelTypes(workspace Workspace) ([]PanelType, error) {
 			PanelEquityChart,
 			PanelFoldTimeline,
 			PanelPredictionOverlay,
+			PanelResultDistributions,
 			PanelConfigurationDiff,
 		}, nil
 	case WorkspaceModels:

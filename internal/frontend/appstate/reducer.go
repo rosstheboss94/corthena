@@ -38,6 +38,12 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 		if previous == WorkspaceExperiments && action.Workspace != WorkspaceExperiments && next.Experiments.State == WorkspaceLoading {
 			effects = append(effects, CancelExperimentEffect{ID: "experiments-cancel-workspace", Generation: next.Experiments.Generation})
 		}
+		if previous == WorkspaceJobs && action.Workspace != WorkspaceJobs && next.JobsWorkspace.State == WorkspaceLoading {
+			effects = append(effects, CancelJobsEffect{ID: "jobs-cancel-workspace", Generation: next.JobsWorkspace.Generation})
+		}
+		if previous == WorkspaceResults && action.Workspace != WorkspaceResults && next.ResultsWorkspace.State == WorkspaceLoading {
+			effects = append(effects, CancelResultsEffect{ID: "results-cancel-workspace", Generation: next.ResultsWorkspace.Generation})
+		}
 		if action.Workspace == WorkspaceData {
 			effect, err := refreshDataWorkspace(&next)
 			if err != nil {
@@ -58,6 +64,20 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 		}
 		if action.Workspace == WorkspaceExperiments {
 			effect, err := refreshExperimentsWorkspace(&next)
+			if err != nil {
+				return state, nil, err
+			}
+			effects = append(effects, effect)
+		}
+		if action.Workspace == WorkspaceJobs {
+			effect, err := refreshJobsWorkspace(&next)
+			if err != nil {
+				return state, nil, err
+			}
+			effects = append(effects, effect)
+		}
+		if action.Workspace == WorkspaceResults {
+			effect, err := refreshResultsWorkspace(&next)
 			if err != nil {
 				return state, nil, err
 			}
@@ -599,6 +619,113 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 		next.Experiments.DraftPersistence.LastErrorRevision = action.Revision
 		next.Overlays.Toasts = append(next.Overlays.Toasts, Toast{ID: action.EffectID, Kind: ToastError, Message: action.Error.Message, CreatedAt: action.FailedAt.UTC()})
 		return next, nil, nil
+	case RequestJobsWorkspaceAction:
+		effect, err := beginJobsQuery(&next, action.Query)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SetJobsScenarioAction:
+		if !action.Scenario.Valid() {
+			return state, nil, fmt.Errorf("%w: invalid Jobs scenario %q", ErrInvariant, action.Scenario)
+		}
+		next.JobsWorkspace.Scenario = action.Scenario
+		effect, err := refreshJobsWorkspace(&next)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SelectJobAction:
+		if !containsJobDetail(next.JobsWorkspace.Snapshot.Jobs, action.JobID) {
+			return state, nil, fmt.Errorf("%w: unknown job %q", ErrInvariant, action.JobID)
+		}
+		next.JobsWorkspace.SelectedJobID = action.JobID
+		return next, nil, nil
+	case ControlJobAction:
+		if err := action.Command.Validate(); err != nil {
+			return state, nil, err
+		}
+		detail, found := findJobDetail(next.JobsWorkspace.Snapshot.Jobs, action.Command.JobID)
+		if !found {
+			return state, nil, fmt.Errorf("%w: unknown job %q", ErrInvariant, action.Command.JobID)
+		}
+		if !detail.Summary.State.AllowsControl(action.Command.Control) {
+			return state, nil, fmt.Errorf("%w: job %q in state %q does not allow %q", ErrInvariant, action.Command.JobID, detail.Summary.State, action.Command.Control)
+		}
+		next.JobsWorkspace.PendingControl = action.Command.Control
+		next.JobsWorkspace.Error = ErrorSnapshot{}
+		return next, []UIEffect{ControlJobEffect{ID: EffectID(action.Command.CorrelationID), Command: action.Command}}, nil
+	case JobsQueryFailedAction:
+		if action.Generation != next.JobsWorkspace.Generation {
+			return next, nil, nil
+		}
+		next.JobsWorkspace.State = workspaceJobResultFailure(action.Error.Code)
+		next.JobsWorkspace.Stale = next.JobsWorkspace.Snapshot.Query.Generation != 0
+		next.JobsWorkspace.Error = action.Error
+		next.JobsWorkspace.PendingControl = ""
+		return next, nil, nil
+	case JobsQueryCancelledAction:
+		if action.Generation != next.JobsWorkspace.Generation {
+			return next, nil, nil
+		}
+		next.JobsWorkspace.State = WorkspaceCancelled
+		next.JobsWorkspace.Stale = next.JobsWorkspace.Snapshot.Query.Generation != 0
+		next.JobsWorkspace.PendingControl = ""
+		return next, nil, nil
+	case RequestResultsWorkspaceAction:
+		effect, err := beginResultsQuery(&next, action.Query)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SetResultsScenarioAction:
+		if !action.Scenario.Valid() {
+			return state, nil, fmt.Errorf("%w: invalid Results scenario %q", ErrInvariant, action.Scenario)
+		}
+		next.ResultsWorkspace.Scenario = action.Scenario
+		effect, err := refreshResultsWorkspace(&next)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SelectResultRunAction:
+		if !containsRunDetail(next.ResultsWorkspace.Snapshot.Runs, action.RunID) {
+			return state, nil, fmt.Errorf("%w: unknown result run %q", ErrInvariant, action.RunID)
+		}
+		selection, err := toggleRunSelection(next.ResultsWorkspace.SelectedRunIDs, action.RunID, action.Toggle)
+		if err != nil {
+			return state, nil, err
+		}
+		next.ResultsWorkspace.SelectedRunIDs = selection
+		if len(selection) > 0 {
+			next.ResultsWorkspace.PrimaryRunID = selection[0]
+			next.LinkContext.RunID = selection[0]
+		} else {
+			next.ResultsWorkspace.PrimaryRunID = ""
+		}
+		return next, nil, nil
+	case SetResultsFilterAction:
+		next.ResultsWorkspace.Filter = normalizedResultFilter(action.Filter)
+		effect, err := refreshResultsWorkspace(&next)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case ResultsQueryFailedAction:
+		if action.Generation != next.ResultsWorkspace.Generation {
+			return next, nil, nil
+		}
+		next.ResultsWorkspace.State = workspaceJobResultFailure(action.Error.Code)
+		next.ResultsWorkspace.Stale = next.ResultsWorkspace.Snapshot.Query.Generation != 0
+		next.ResultsWorkspace.Error = action.Error
+		return next, nil, nil
+	case ResultsQueryCancelledAction:
+		if action.Generation != next.ResultsWorkspace.Generation {
+			return next, nil, nil
+		}
+		next.ResultsWorkspace.State = WorkspaceCancelled
+		next.ResultsWorkspace.Stale = next.ResultsWorkspace.Snapshot.Query.Generation != 0
+		return next, nil, nil
 	case ClientMessageAction:
 		return reduceClientMessage(next, action.Message)
 	case LayoutsLoadedAction:
@@ -759,6 +886,18 @@ func reduceClientMessage(state AppState, message ClientMessage) (AppState, []UIE
 		return refreshWorkspacesAfterCatalog(state)
 	case JobUpdateMessage:
 		state.Jobs = upsertJob(state.Jobs, message.Job)
+		if message.HasDetail {
+			state.JobsWorkspace.Snapshot.Jobs = upsertJobDetail(state.JobsWorkspace.Snapshot.Jobs, message.Detail)
+		} else if detail, found := findJobDetail(state.JobsWorkspace.Snapshot.Jobs, message.Job.ID); found {
+			detail.Summary = message.Job.Clone()
+			state.JobsWorkspace.Snapshot.Jobs = upsertJobDetail(state.JobsWorkspace.Snapshot.Jobs, detail)
+		}
+		if message.HasResult {
+			state.ResultsWorkspace.Snapshot.Runs = upsertRunDetail(state.ResultsWorkspace.Snapshot.Runs, message.Result)
+			state.Results = upsertResult(state.Results, message.Result.Summary)
+		}
+		state.JobsWorkspace.PendingControl = ""
+		state.JobsWorkspace.Error = ErrorSnapshot{}
 		state.applyEventEnvelope(message.Event)
 		return state, nil, nil
 	case RunResultsMessage:
@@ -826,6 +965,25 @@ func reduceClientMessage(state AppState, message ClientMessage) (AppState, []UIE
 		state.Jobs = upsertJob(state.Jobs, message.Job)
 		state.applyEventEnvelope(message.Event)
 		return state, nil, nil
+	case JobsWorkspaceMessage:
+		if !applyJobsWorkspaceResponse(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		return state, nil, nil
+	case ResultsWorkspaceMessage:
+		if !applyResultsWorkspaceResponse(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		if message.Snapshot.Degraded {
+			state.Connection.State = ConnectionDegraded
+			state.Connection.Detail = "Results are degraded; immutable completed runs remain available"
+		} else if message.Snapshot.Query.Scenario == ResultsScenarioRecovered {
+			state.Connection.State = ConnectionConnected
+			state.Connection.Detail = "Results recovered and reconciled"
+		}
+		return state, nil, nil
 	case ComponentStatusMessage:
 		state.Components = upsertComponent(state.Components, message.Component)
 		state.applyEventEnvelope(message.Event)
@@ -872,6 +1030,18 @@ func refreshWorkspacesAfterCatalog(state AppState) (AppState, []UIEffect, error)
 		}
 	case WorkspaceExperiments:
 		effect, err := refreshExperimentsWorkspace(&state)
+		if err != nil {
+			return state, nil, err
+		}
+		effects = append(effects, effect)
+	case WorkspaceJobs:
+		effect, err := refreshJobsWorkspace(&state)
+		if err != nil {
+			return state, nil, err
+		}
+		effects = append(effects, effect)
+	case WorkspaceResults:
+		effect, err := refreshResultsWorkspace(&state)
 		if err != nil {
 			return state, nil, err
 		}
@@ -1297,6 +1467,18 @@ func upsertJob(input []JobSummary, job JobSummary) []JobSummary {
 		}
 	}
 	return append(output, job)
+}
+
+func upsertResult(input []RunResultSummary, result RunResultSummary) []RunResultSummary {
+	output := cloneResults(input)
+	result = result.Clone()
+	for index := range output {
+		if output[index].ID == result.ID {
+			output[index] = result
+			return output
+		}
+	}
+	return append(output, result)
 }
 
 func upsertInference(input []InferenceSummary, inference InferenceSummary) []InferenceSummary {

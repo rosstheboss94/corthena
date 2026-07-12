@@ -2,7 +2,7 @@
 
 **Status:** Authoritative  
 **Owner:** Frontend  
-**Last updated:** 2026-07-11
+**Last updated:** 2026-07-12
 **Related:** [Technology stack](../technology-stack.md), [Foundation](foundation.md), [Visualization](visualization.md)
 
 All workspaces consume typed state and emit `UIAction` values. Panels do not call repositories, the network, the filesystem, workers, or the simulator directly.
@@ -83,11 +83,39 @@ Default panels are the virtualized job queue, selected-job stage/progress view, 
 
 Users can pause, resume, or cancel only when allowed by the typed job state. Interrupted jobs require explicit resume.
 
+The queue uses stable job identities and renders only the visible row and cell
+window. Selecting a job synchronizes its ordered stages, live metric series,
+worker lease, process health, durable checkpoints, and structured logs without
+exposing mutable simulator state. Pause, resume, and cancel commands carry
+correlation, command, and generation identities; the reducer enables them only
+from the coordinator-owned lifecycle states defined by the training runtime.
+
+The deterministic frontend demonstrates successful running and immutable
+completion, pause and resume at a durable node boundary, cooperative
+cancellation that retains committed artifacts, worker interruption requiring
+explicit resume, and fail-closed checkpoint incompatibility. Reconciled
+snapshots supersede active workspace generations so startup completion order
+cannot change the visible queue or selected telemetry.
+
 ## Results
 
 Default panels are the run browser and filters, metric and fold comparison, equity and drawdown charts, fold timeline, IC and prediction distributions, prediction/market overlay, and configuration diff.
 
 Test metrics are visually distinct from selection metrics to discourage test-set tuning.
+
+The run browser preserves up to four stable comparison identities. Completed
+run summaries and details are immutable and include validation-versus-test
+metric partitions, fold stability, equity and drawdown series, chronological
+fold windows, IC and prediction histograms, prediction/realized-market
+overlays, stable configuration values, and required reference-backtest
+disclosures. Test metrics use an explicit `TEST` label and warning treatment;
+they are never merged into validation selection metrics.
+
+Results queries are generation ordered, filterable, cancellable, and retain
+the last immutable comparison while refreshing. The deterministic frontend
+covers normal, loading, empty, failure, degraded, recovered, cancelled, and
+saturated states. Startup and reconnect reconciliation issue a newer Results
+generation so stale global snapshots cannot overwrite a rich comparison.
 
 ## Models
 

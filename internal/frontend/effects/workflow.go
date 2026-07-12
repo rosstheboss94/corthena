@@ -41,8 +41,13 @@ func (runtime *Runtime) startWorkflow(effect appstate.UIEffect) {
 		message, err := runtime.runWorkflow(ctx, effect)
 		if err != nil {
 			code := appstate.ErrorDataFailed
-			if strings.HasPrefix(key, "experiments") {
+			switch {
+			case strings.HasPrefix(key, "experiments"):
 				code = appstate.ErrorExperimentFailed
+			case strings.HasPrefix(key, "jobs"):
+				code = appstate.ErrorJobsFailed
+			case strings.HasPrefix(key, "results"):
+				code = appstate.ErrorResultsFailed
 			}
 			retryable := true
 			var typedErr interface{ FrontendError() appstate.ErrorSnapshot }
@@ -53,8 +58,13 @@ func (runtime *Runtime) startWorkflow(effect appstate.UIEffect) {
 			}
 			if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
 				code = appstate.ErrorDataCancelled
-				if strings.HasPrefix(key, "experiments") {
+				switch {
+				case strings.HasPrefix(key, "experiments"):
 					code = appstate.ErrorExperimentCancelled
+				case strings.HasPrefix(key, "jobs"):
+					code = appstate.ErrorJobsCancelled
+				case strings.HasPrefix(key, "results"):
+					code = appstate.ErrorResultsCancelled
 				}
 			}
 			runtime.sendWorkflowFailure(key, generation, err, code, retryable)
@@ -82,6 +92,12 @@ func (runtime *Runtime) runWorkflow(ctx context.Context, effect appstate.UIEffec
 		return runtime.client.EvaluateExperiment(ctx, effect.Request)
 	case appstate.SubmitExperimentEffect:
 		return runtime.client.SubmitExperiment(ctx, effect.Command)
+	case appstate.QueryJobsWorkspaceEffect:
+		return runtime.client.JobsWorkspace(ctx, effect.Query)
+	case appstate.ControlJobEffect:
+		return runtime.client.ControlJob(ctx, effect.Command)
+	case appstate.QueryResultsWorkspaceEffect:
+		return runtime.client.ResultsWorkspace(ctx, effect.Query)
 	default:
 		return nil, fmt.Errorf("unsupported workflow effect %T", effect)
 	}
@@ -102,6 +118,12 @@ func workflowIdentity(effect appstate.UIEffect) (string, uint64, error) {
 			return "experiments-submit", effect.Command.Generation, appstate.ErrInvalidExperiment
 		}
 		return "experiments-submit", effect.Command.Generation, nil
+	case appstate.QueryJobsWorkspaceEffect:
+		return "jobs-query", effect.Query.Generation, effect.Query.Validate()
+	case appstate.ControlJobEffect:
+		return "jobs-control", effect.Command.Generation, effect.Command.Validate()
+	case appstate.QueryResultsWorkspaceEffect:
+		return "results-query", effect.Query.Generation, effect.Query.Validate()
 	default:
 		return "", 0, fmt.Errorf("unsupported workflow effect %T", effect)
 	}
@@ -112,13 +134,22 @@ func (runtime *Runtime) sendWorkflowFailure(key string, generation uint64, err e
 	var typedErr interface{ FrontendError() appstate.ErrorSnapshot }
 	if errors.As(err, &typedErr) {
 		snapshot = typedErr.FrontendError()
-		if code == appstate.ErrorDataCancelled || code == appstate.ErrorExperimentCancelled {
+		if code == appstate.ErrorDataCancelled || code == appstate.ErrorExperimentCancelled ||
+			code == appstate.ErrorJobsCancelled || code == appstate.ErrorResultsCancelled {
 			snapshot.Code = code
 			snapshot.Message = "workflow request cancelled"
 		}
 	}
 	if strings.HasPrefix(key, "experiments") {
 		runtime.sendAction(appstate.ExperimentQueryFailedAction{Generation: generation, FailedAt: runtime.clock.Now(), Error: snapshot})
+		return
+	}
+	if strings.HasPrefix(key, "jobs") {
+		runtime.sendAction(appstate.JobsQueryFailedAction{Generation: generation, FailedAt: runtime.clock.Now(), Error: snapshot})
+		return
+	}
+	if strings.HasPrefix(key, "results") {
+		runtime.sendAction(appstate.ResultsQueryFailedAction{Generation: generation, FailedAt: runtime.clock.Now(), Error: snapshot})
 		return
 	}
 	runtime.sendAction(appstate.DataQueryFailedAction{Generation: generation, FailedAt: runtime.clock.Now(), Error: snapshot})
@@ -131,6 +162,12 @@ func (runtime *Runtime) cancelWorkflow(effect appstate.UIEffect) {
 		generation = typed.Generation
 	} else if typed, ok := effect.(appstate.CancelExperimentEffect); ok {
 		prefix = "experiments"
+		generation = typed.Generation
+	} else if typed, ok := effect.(appstate.CancelJobsEffect); ok {
+		prefix = "jobs"
+		generation = typed.Generation
+	} else if typed, ok := effect.(appstate.CancelResultsEffect); ok {
+		prefix = "results"
 		generation = typed.Generation
 	}
 	runtime.workflowMu.Lock()
@@ -145,10 +182,15 @@ func (runtime *Runtime) cancelWorkflow(effect appstate.UIEffect) {
 	}
 	runtime.workflowMu.Unlock()
 	for _, currentGeneration := range cancelled {
-		if prefix == "data" {
+		switch prefix {
+		case "data":
 			runtime.sendAction(appstate.DataQueryCancelledAction{Generation: currentGeneration, CancelledAt: runtime.clock.Now()})
-		} else {
+		case "experiments":
 			runtime.sendAction(appstate.ExperimentQueryCancelledAction{Generation: currentGeneration, CancelledAt: runtime.clock.Now()})
+		case "jobs":
+			runtime.sendAction(appstate.JobsQueryCancelledAction{Generation: currentGeneration, CancelledAt: runtime.clock.Now()})
+		case "results":
+			runtime.sendAction(appstate.ResultsQueryCancelledAction{Generation: currentGeneration, CancelledAt: runtime.clock.Now()})
 		}
 	}
 }

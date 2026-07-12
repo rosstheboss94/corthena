@@ -192,11 +192,16 @@ func (runtime *Runtime) startEffect(effect appstate.UIEffect) {
 		appstate.ImportDataEffect,
 		appstate.QueryExperimentsEffect,
 		appstate.EvaluateExperimentEffect,
-		appstate.SubmitExperimentEffect:
+		appstate.SubmitExperimentEffect,
+		appstate.QueryJobsWorkspaceEffect,
+		appstate.ControlJobEffect,
+		appstate.QueryResultsWorkspaceEffect:
 		runtime.startWorkflow(typedEffect)
 		return
 	case appstate.CancelDataEffect,
-		appstate.CancelExperimentEffect:
+		appstate.CancelExperimentEffect,
+		appstate.CancelJobsEffect,
+		appstate.CancelResultsEffect:
 		runtime.cancelWorkflow(typedEffect)
 		return
 	}
@@ -425,6 +430,16 @@ func effectID(effect appstate.UIEffect) appstate.EffectID {
 	case appstate.LoadExperimentDraftEffect:
 		return effect.ID
 	case appstate.PersistExperimentDraftEffect:
+		return effect.ID
+	case appstate.QueryJobsWorkspaceEffect:
+		return effect.ID
+	case appstate.ControlJobEffect:
+		return effect.ID
+	case appstate.CancelJobsEffect:
+		return effect.ID
+	case appstate.QueryResultsWorkspaceEffect:
+		return effect.ID
+	case appstate.CancelResultsEffect:
 		return effect.ID
 	default:
 		return ""

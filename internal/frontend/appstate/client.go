@@ -2,6 +2,7 @@ package appstate
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -14,6 +15,8 @@ type FrontendClient interface {
 	Experiments(context.Context, ExperimentQuery) (ExperimentWorkspaceMessage, error)
 	EvaluateExperiment(context.Context, ExperimentEvaluationRequest) (ExperimentEvaluationMessage, error)
 	SubmitExperiment(context.Context, SubmitExperimentCommand) (ExperimentSubmittedMessage, error)
+	JobsWorkspace(context.Context, JobsWorkspaceQuery) (JobsWorkspaceMessage, error)
+	ResultsWorkspace(context.Context, ResultsWorkspaceQuery) (ResultsWorkspaceMessage, error)
 	ControlJob(context.Context, JobControlCommand) (JobUpdateMessage, error)
 	RunInference(context.Context, InferenceCommand) (InferenceUpdateMessage, error)
 	Research(context.Context, ResearchQuery) (ResearchResponseMessage, error)
@@ -72,12 +75,31 @@ const (
 	JobControlCancel JobControl = "cancel"
 )
 
+// Valid reports whether the control is one of the closed command variants.
+func (control JobControl) Valid() bool {
+	switch control {
+	case JobControlPause, JobControlResume, JobControlCancel:
+		return true
+	default:
+		return false
+	}
+}
+
 // JobControlCommand requests a legal job state transition.
 type JobControlCommand struct {
 	CorrelationID CorrelationID
 	CommandID     CorrelationID
+	Generation    uint64
 	JobID         JobID
 	Control       JobControl
+}
+
+// Validate checks command and idempotency identities.
+func (command JobControlCommand) Validate() error {
+	if command.CorrelationID == "" || command.CommandID == "" || command.Generation == 0 || command.JobID == "" || !command.Control.Valid() {
+		return fmt.Errorf("%w: correlation, command, generation, job, and control are required", ErrInvalidJobs)
+	}
+	return nil
 }
 
 // InferenceCommand requests deterministic batch scoring.
@@ -121,6 +143,17 @@ const (
 	DatasetValidation DatasetStatus = "validation"
 	DatasetFailed     DatasetStatus = "failed"
 )
+
+// Valid reports whether state is one coordinator-owned lifecycle variant.
+func (state JobState) Valid() bool {
+	switch state {
+	case JobQueued, JobRunning, JobPauseRequested, JobPaused, JobCompleted,
+		JobFailed, JobCancelled, JobInterrupted:
+		return true
+	default:
+		return false
+	}
+}
 
 // DatasetSummary is a typed immutable catalog row.
 type DatasetSummary struct {
@@ -234,15 +267,29 @@ type JobSummary struct {
 	Stage           string
 	CPUSlots        int
 	CheckpointCount int
+	QueuePosition   int
+	RequestedSlots  int
+	CreatedAt       time.Time
+	StartedAt       time.Time
 	UpdatedAt       time.Time
 	Error           ErrorSnapshot
 }
 
+// Clone returns a normalized immutable job summary.
+func (job JobSummary) Clone() JobSummary {
+	job.CreatedAt = job.CreatedAt.UTC()
+	job.StartedAt = job.StartedAt.UTC()
+	job.UpdatedAt = job.UpdatedAt.UTC()
+	return job
+}
+
 // MetricSummary is a stable numeric metric value.
 type MetricSummary struct {
-	Name    string
-	Value   float64
-	Missing bool
+	Name      string
+	Value     float64
+	Missing   bool
+	Partition MetricPartition
+	Stability float64
 }
 
 // RunResultSummary describes immutable evaluation output.
@@ -368,11 +415,24 @@ func (DatasetCatalogMessage) isClientMessage() {}
 
 // JobUpdateMessage upserts one job.
 type JobUpdateMessage struct {
-	Event EventEnvelope
-	Job   JobSummary
+	Event     EventEnvelope
+	Job       JobSummary
+	Detail    JobDetail
+	HasDetail bool
+	Result    RunResultDetail
+	HasResult bool
 }
 
 func (JobUpdateMessage) isClientMessage() {}
+
+// Clone returns an independent job update suitable for idempotent replay.
+func (message JobUpdateMessage) Clone() JobUpdateMessage {
+	message.Event.Timestamp = message.Event.Timestamp.UTC()
+	message.Job = message.Job.Clone()
+	message.Detail = message.Detail.Clone()
+	message.Result = message.Result.Clone()
+	return message
+}
 
 // RunResultsMessage replaces known run results.
 type RunResultsMessage struct {
@@ -443,8 +503,7 @@ func cloneJobs(input []JobSummary) []JobSummary {
 	}
 	output := make([]JobSummary, len(input))
 	for index, job := range input {
-		job.UpdatedAt = job.UpdatedAt.UTC()
-		output[index] = job
+		output[index] = job.Clone()
 	}
 	return output
 }
