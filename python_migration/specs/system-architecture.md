@@ -3,7 +3,7 @@
 **Status:** Authoritative  
 **Owner:** Platform  
 **Last updated:** 2026-07-12
-**Related:** [Technology stack](technology-stack.md), [Training runtime](training-runtime.md), [API](api.md), [ADR 0001](decisions/0001-local-process-architecture.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md)
+**Related:** [Concurrency and parallelism](concurrency-and-parallelism.md), [Technology stack](technology-stack.md), [Training runtime](training-runtime.md), [API](api.md), [ADR 0001](decisions/0001-local-process-architecture.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md)
 
 ## Technology Constraints
 
@@ -31,10 +31,9 @@ Worker process x active training job
 
 The coordinator owns durable metadata writes and CPU-slot allocation. Worker
 processes isolate crashes, cancellation, library state, and job-local memory.
-Bounded processes are the default pure-Python CPU parallelism mechanism;
-threads serve I/O and orchestration, while process and library pools remain explicitly owned and lease-bound. Raylib and
-Raygui calls remain on the UI process's locked OS
-thread.
+[Concurrency and parallelism](concurrency-and-parallelism.md) owns execution
+selection, resource ownership, lease accounting, UI-thread confinement, and
+lifecycle rules for this topology.
 
 The UI, coordinator, worker, and CLI are distinct entry points that share typed
 contract definitions. The coordinator starts workers with explicit job IDs,
@@ -61,16 +60,12 @@ never relaxes correctness, explicit synchronization, or determinism.
 
 ## Concurrency and Ownership
 
-- The UI locks its initial OS thread before initializing Raylib and never dispatches Raylib/Raygui calls elsewhere.
-- Code never uses GIL-provided atomicity as an application synchronization
-  contract; mutable state has one owner or an explicit lock/queue.
-- Each worker has one orchestration owner that owns mutable estimator and checkpoint state.
-- Compute tasks receive immutable array, tensor, or memory-map views and return task-owned immutable results.
-- Queues and streams have documented senders, receivers, and closers; cancellation uses explicit tokens/events and does not rely on abandoned sends.
-- Reductions apply results in stable logical-index order, never arrival order.
-- The coordinator leases explicit CPU slots before starting workers or enlarging pools.
-- Worker and library pool size cannot exceed its lease; nested parallel sections reuse the same budget or execute serially.
-- Shared memory mappings are immutable after publication. Writers use exclusive ranges before publication.
+[Concurrency and parallelism](concurrency-and-parallelism.md) is authoritative
+for ownership, synchronization, backpressure, CPU leases, deterministic
+ordering, immutable and shared-memory publication, cancellation, and shutdown.
+Within this topology, the coordinator owns leases and durable state, each
+worker owns its job-local orchestration state, and the UI owns its native OS
+thread.
 
 ## Storage
 
@@ -91,7 +86,8 @@ artifacts before indexing them.
 - Completed runs and models are immutable.
 - Mutable catalog updates never mutate active-run materializations.
 - Shared inputs are read-only; concurrent tasks own output buffers.
-- No filesystem, database, network, decoding, training, or blocking library operation runs on the render thread.
 - Startup reconciles stale jobs, temporary artifacts, database state, and worker liveness.
-- Shutdown requests cooperative pause, waits through an explicit deadline, and reports the consequences of force termination.
+- Shutdown applies the canonical dependency ordering; job-specific cooperative
+  pause and force-termination consequences are defined by
+  [training runtime](training-runtime.md).
 - Protocol, schema, engine, dependency, and artifact version mismatches fail closed with stable errors.

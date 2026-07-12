@@ -2,7 +2,7 @@
 
 **Status:** Authoritative  
 **Owner:** Project  
-**Last updated:** 2026-07-04
+**Last updated:** 2026-07-12
 
 This directory defines the required behavior of the Python/Cython trading
 research workstation. Read only the documents relevant to the task. `AGENTS.md`
@@ -18,9 +18,10 @@ contains the default routing table.
 | [python-migration.md](python-migration.md) | Python/Cython implementation order, package mapping, compatibility rules, and screenshot baseline policy |
 | [migration-baseline.md](migration-baseline.md) | Authoritative legacy ownership map and functional, replay, and visual parity evidence |
 | [system-architecture.md](system-architecture.md) | Processes, storage, dependencies, runtime modes, and system data flow |
+| [concurrency-and-parallelism.md](concurrency-and-parallelism.md) | Workstation-wide execution selection, ownership, CPU leases, cancellation, shutdown, and deterministic parallelism |
 | [data-and-features.md](data-and-features.md) | Imports, catalog, features, targets, and materialization |
 | [models.md](models.md) | Model specification index; estimator and artifact rules are split |
-| [training-runtime.md](training-runtime.md) | Jobs, scheduling, concurrency, checkpoints, pause, and recovery |
+| [training-runtime.md](training-runtime.md) | Jobs, scheduling, job-specific resource policy, checkpoints, pause, and recovery |
 | [evaluation-and-inference.md](evaluation-and-inference.md) | Evaluation and inference specification index |
 | [api.md](api.md) | Coordinator contracts, Python client, DTOs, Arrow transfer, and event streaming |
 | [frontend/foundation.md](frontend/foundation.md) | Frontend foundation index; shell, effects, and persistence are split |

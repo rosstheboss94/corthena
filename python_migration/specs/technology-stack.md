@@ -3,7 +3,7 @@
 **Status:** Authoritative  
 **Owner:** Architecture  
 **Last updated:** 2026-07-12
-**Related:** [System architecture](system-architecture.md), [Quality](quality.md), [Python migration](python-migration.md), [ADR 0002](decisions/0002-python-library-estimators-and-artifacts.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md), [ADR 0006](decisions/0006-curated-python-dependencies.md)
+**Related:** [Concurrency and parallelism](concurrency-and-parallelism.md), [System architecture](system-architecture.md), [Quality](quality.md), [Python migration](python-migration.md), [ADR 0002](decisions/0002-python-library-estimators-and-artifacts.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md), [ADR 0006](decisions/0006-curated-python-dependencies.md)
 
 This document owns approved direct dependencies and their responsibilities for
 the Python/Cython migration. `pyproject.toml` owns direct dependency
@@ -85,13 +85,12 @@ revised.
 
 ## Concurrency
 
-Use processes for role and job isolation and bounded process pools for
-pure-Python CPU computation. Use owned threads for I/O and orchestration, and
-library/native threads only when they safely release the GIL. Queues, cancellation
-events, async tasks, and library thread pools remain behind explicit adapters.
-The coordinator owns CPU-slot leases and
-sets bounds for NumPy, scikit-learn, PyTorch, BLAS/OpenMP, and worker pools.
-Do not add a distributed runtime or unrestricted hidden numerical thread pool.
+[Concurrency and parallelism](concurrency-and-parallelism.md) owns execution
+selection, CPU leases, adapter bounds, and lifecycle policy. This document owns
+which process, async, threading, native, and Cython technologies may implement
+that policy. Queues, cancellation events, async tasks, and library pools remain
+behind explicit typed adapters; no distributed runtime or external broker is
+approved.
 
 ## Frontend
 

@@ -3,7 +3,7 @@
 **Status:** Authoritative  
 **Owner:** Architecture  
 **Last updated:** 2026-07-12  
-**Related:** [Specification index](specs/README.md), [Technology stack](specs/technology-stack.md), [System architecture](specs/system-architecture.md), [API](specs/api.md), [Python migration](specs/python-migration.md)
+**Related:** [Specification index](README.md), [Concurrency and parallelism](concurrency-and-parallelism.md), [Technology stack](technology-stack.md), [System architecture](system-architecture.md), [API](api.md), [Python migration](python-migration.md)
 
 This is the shared architecture pattern specification for Python/Cython routes.
 Future agents should update this document when module boundaries, public
@@ -317,13 +317,11 @@ Rules:
 
 ## Determinism, ownership, and quality
 
-Every process, thread, queue, async task, stream, and library pool has an owner,
-cancellation path, bounded shutdown path, and documented sender/receiver/closer
-where applicable.
-
-Do not let results depend on dict iteration, wall clock, PID, scheduling,
-process order, or library completion order. Use stable seed derivation and apply
-reductions in logical order.
+[Concurrency and parallelism](concurrency-and-parallelism.md) owns the general
+resource-declaration, synchronization, immutable-publication, CPU-lease,
+cancellation, shutdown, and deterministic-ordering contracts. Modules expose
+the typed lifecycle interfaces needed to apply those contracts without
+reversing dependency direction.
 
 Prevent future-data leakage in imports, feature and target construction, split
 generation, purge/embargo, evaluation, refit, inference, and reference

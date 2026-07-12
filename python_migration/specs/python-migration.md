@@ -3,7 +3,7 @@
 **Status:** Authoritative  
 **Owner:** Architecture  
 **Last updated:** 2026-07-12  
-**Related:** [Technology stack](technology-stack.md), [Migration baseline](migration-baseline.md), [Roadmap](roadmap.md), [System architecture](system-architecture.md), [Quality](quality.md), [ADR 0002](decisions/0002-python-library-estimators-and-artifacts.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md), [ADR 0006](decisions/0006-curated-python-dependencies.md)
+**Related:** [Concurrency and parallelism](concurrency-and-parallelism.md), [Technology stack](technology-stack.md), [Migration baseline](migration-baseline.md), [Roadmap](roadmap.md), [System architecture](system-architecture.md), [Quality](quality.md), [ADR 0002](decisions/0002-python-library-estimators-and-artifacts.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md), [ADR 0006](decisions/0006-curated-python-dependencies.md)
 
 This document owns the Python/Cython implementation layer before runtime code is rewritten. It
 does not relax product behavior, UI workflows, typed boundaries, immutability,
@@ -55,9 +55,10 @@ parallel behavior with different user workflows or public contract semantics.
 - Runtime, tools, tests, packaging, and extensions use exactly regular Windows
   AMD64 CPython `3.14.2`; startup rejects free-threaded and other versions.
   Repeat Phase 0 for the `cp314-win_amd64` ABI.
-- Preserve UI, coordinator, and per-training-job processes. Use bounded
-  processes for pure-Python CPU parallelism and threads for I/O and orchestration.
-  Never rely on the GIL for application-level synchronization.
+- Preserve UI, coordinator, and per-training-job topology. Apply
+  [concurrency and parallelism](concurrency-and-parallelism.md) to execution
+  selection, synchronization, resource bounds, determinism, cancellation, and
+  shutdown throughout the port.
 
 - Preserve existing UI workflows, workspace names, state transitions, layout
   behavior, link-group semantics, component health states, and user-visible
@@ -103,9 +104,10 @@ Start every module in typed Python. Add Cython only after a benchmark or native
 adapter requirement identifies a hot path or boundary that Python cannot meet.
 Cython modules must have typed adapters, Windows build coverage, focused tests,
 and fallback or failure behavior documented in the owning spec. Ordinary Cython
-code holds the GIL. A typed native kernel may release it only after parity,
-deterministic concurrent-call, ownership, cancellation, and benchmark evidence.
-Windows builds verify the regular `cp314` extension tag.
+code holds the GIL. The canonical
+[native parallelism and `nogil` admission](concurrency-and-parallelism.md#native-parallelism-and-nogil-admission)
+rules govern any release. Windows builds verify the regular `cp314` extension
+tag.
 
 ## Screenshot and Golden Migration Policy
 

@@ -49,6 +49,7 @@ superseded evidence.
 
 ## Affected specifications
 
+- [Concurrency and parallelism](../concurrency-and-parallelism.md)
 - [Technology stack](../technology-stack.md)
 - [System architecture](../system-architecture.md)
 - [Python migration](../python-migration.md)

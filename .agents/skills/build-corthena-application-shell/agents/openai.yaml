@@ -1,0 +1,4 @@
+interface:
+  display_name: "Corthena Application Shell Builder"
+  short_description: "Build the deterministic Phase 3 shell"
+  default_prompt: "Use $build-corthena-application-shell to implement the deterministic Phase 3 application shell."

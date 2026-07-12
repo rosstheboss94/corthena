@@ -53,7 +53,7 @@ boundaries. Update the owning spec when behavior or a public contract changes.
 | Dependencies, packaging, or tooling | `specs/technology-stack.md`, `specs/quality.md` |
 | Python/Cython migration | `specs/python-migration.md`, `specs/migration-baseline.md`, `specs/technology-stack.md`, `specs/roadmap.md` |
 | Phase 12 Python scaffold and shell | `specs/routing/phase-12.md` |
-| Processes, storage, runtime, concurrency | `specs/system-architecture.md`, `specs/decisions/0008-regular-cpython-concurrency.md` |
+| Processes, storage, runtime, concurrency | `specs/concurrency-and-parallelism.md`, `specs/system-architecture.md`; read `specs/decisions/0008-regular-cpython-concurrency.md` for decision rationale |
 | Imports, datasets, features, targets | `specs/data-and-features.md` |
 | Trees, forests, boosting, model artifacts | `specs/models.md`, `specs/decisions/0002-python-library-estimators-and-artifacts.md` |
 | Jobs, scheduling, checkpoints, pause/resume | `specs/training-runtime.md`, `specs/models.md` |
@@ -62,6 +62,6 @@ boundaries. Update the owning spec when behavior or a public contract changes.
 | Raylib shell, state, docking, styling | `specs/frontend/foundation.md` |
 | Workspace or panel behavior | `specs/frontend/workspaces.md`, `specs/frontend/foundation.md` |
 | Charts, tables, linked views | `specs/frontend/visualization.md`, `specs/frontend/foundation.md` |
-| Tests, typing, performance | `specs/quality.md` plus the owning subsystem spec |
+| Implementation, review, tests, typing, or performance | `specs/quality.md`, `specs/concurrency-and-parallelism.md` when concurrent or parallel work is involved, plus the owning subsystem spec |
 | Delivery status or sequencing | `specs/roadmap.md` |
 | Architectural decision changes | Relevant living specs and `specs/decisions/README.md` |

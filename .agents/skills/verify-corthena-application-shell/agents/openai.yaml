@@ -1,0 +1,4 @@
+interface:
+  display_name: "Corthena Application Shell Verifier"
+  short_description: "Verify the deterministic Phase 3 shell"
+  default_prompt: "Use $verify-corthena-application-shell to verify Phase 3 shell behavior and visual parity."

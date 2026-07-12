@@ -13,8 +13,8 @@ specifications; `specs/routing/phase-*.md` provides compact reading routes and
 |---|---|---|
 | 0 | Python/Cython Windows compatibility | Complete; the clean evidence-producing gate passed for exact regular CPython `3.14.2` and `cp314-win_amd64`. |
 | 1 | [Strict Raylib frontend scaffold](routing/phase-1.md) | Complete; the packaged assets, typed adapter, UI-thread checks, bounded native smoke launch, cleanup tests, and configured gates pass. |
-| 2 | Typed frontend architecture and simulator | Pending; implement typed Python state, effects, and deterministic simulator behavior. |
-| 3 | Application shell | Pending; implement the Python shell and hidden-launch lifecycle. |
+| 2 | [Typed frontend architecture and simulator](routing/phase-2.md) | Complete; typed immutable state, closed actions/effects, deterministic simulation, bounded workers, replay, cancellation, saturation, and lifecycle evidence pass. |
+| 3 | [Application shell](routing/phase-3.md) | Complete; the Go-equivalent Raylib shell, typed interactions, bounded lifecycle, raw-RGBA capture, and manifest-owned PNG parity pass. |
 | 4 | Docking, controls, settings, responsive persistence | Pending; implement typed layouts, preferences, recovery, replay, and scale behavior. |
 | 5 | Charts and tables | Pending; implement transforms, LOD, cache, cancellation, virtualization, benchmarks, and golden scenarios. |
 | 6 | Research vertical slice | Pending; implement linked panels, deterministic scenarios, leakage checks, replay, benchmarks, and the 36-image matrix. |
@@ -69,6 +69,56 @@ cleanly. Focused adapter tests and every applicable configured quality and
 Windows compatibility gate must pass. Phase 1 does not include typed shell
 state, effects, docking, workspaces, charts, simulator behavior, or domain
 workflows from Phase 2 or later.
+
+## Phase 2 route and done condition
+
+Use the [Phase 2 task route](routing/phase-2.md) with these required skills, in
+order:
+
+1. `$build-corthena-frontend-state-and-simulator`
+2. `$python-best-practices`
+3. `$verify-corthena-frontend-state-and-simulator`
+4. `$review-corthena-code`
+
+Phase 2 is complete only when immutable typed frontend state, closed action and
+effect variants, a pure deterministic reducer, a narrow `FrontendClient`, a
+bounded effects runtime, and the seeded simulator are implemented behind typed
+boundaries. Identical seeds and action sequences must replay to identical
+state across completion orders; stale generations must be rejected; and
+cancellation, queue saturation, bounded draining, and shutdown must have
+focused leak-free evidence. The simulator-backed Phase 2 startup scenario and
+every applicable configured common and concurrency gate must pass. Phase 2 is
+complete with that implementation and evidence in place. It does
+not include the Phase 3 visual shell, docking, persistence, workspace
+workflows, charts, tables, or real coordinator behavior.
+
+## Phase 3 route and done condition
+
+Use the [Phase 3 task route](routing/phase-3.md) with these required skills, in
+order:
+
+1. `$build-corthena-application-shell`
+2. `$python-best-practices`
+3. `$verify-corthena-application-shell`
+4. `$python-windows-compat-gate`
+5. `$review-corthena-code`
+
+Phase 3 is complete only when the deterministic visual application shell
+composes workspace-tab navigation, global context and component status,
+central non-docking content, a status bar, and inert modal and toast overlay
+layers from immutable `AppState`. Rendering must emit typed `UIAction` values,
+use a stable render order, remain nonblocking, and keep domain, simulator,
+persistence, and native values outside render-neutral shell code. A hidden
+launch must drive the Phase 2 simulator/effects lifecycle, drain results within
+the per-frame bound, render the named Phase 3 scenario, and clean up without
+leaks. Deterministic replay, UI-thread enforcement, fault-injected launch and
+render cleanup, every applicable common/concurrency/visual and Windows gate,
+and manifest-owned PNG parity against the legacy
+`phase3_application_shell.png` must pass. The complete Go shell surface is
+ported, including typed Settings, command-palette, scale, context, and
+panel-selection actions. Docking mutation algorithms, reusable controls,
+persisted preferences, responsive layout policy, and layout persistence and
+recovery remain Phase 4.
 
 ## Global acceptance
 

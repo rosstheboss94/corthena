@@ -3,17 +3,16 @@
 **Status:** Authoritative  
 **Owner:** Runtime  
 **Last updated:** 2026-07-12
-**Related:** [Technology stack](technology-stack.md), [System architecture](system-architecture.md), [Models](models.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md)
+**Related:** [Concurrency and parallelism](concurrency-and-parallelism.md), [Technology stack](technology-stack.md), [System architecture](system-architecture.md), [Models](models.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md)
 
 ## Technology Constraints
 
-Use coordinator-launched Python worker processes for job isolation and bounded
-process/library pools inside each worker. Prefer processes for pure-Python CPU
-compute and threads for I/O and orchestration; retain one process per job for
-crash isolation. Use Python process launch APIs,
-inherited anonymous pipes or approved local IPC, cancellation tokens, queues,
-and explicit CPU leases. Do not add an external scheduler, broker, distributed
-runtime, or unrestricted nested numerical thread pool.
+Use coordinator-launched Python worker processes for job isolation and retain
+one process per job. Python process launch APIs, inherited anonymous pipes or
+approved local IPC, cancellation tokens, queues, and CPU leases implement the
+job runtime. [Concurrency and parallelism](concurrency-and-parallelism.md) owns
+their general selection, bounds, nested-parallelism, ownership, cancellation,
+and shutdown contracts.
 
 ## Job Lifecycle
 
@@ -59,13 +58,19 @@ They never depend on dict iteration or worker response race order.
 
 ## Worker Ownership and Cancellation
 
+[Concurrency and parallelism](concurrency-and-parallelism.md) supplies the
+general declaration, backpressure, cancellation, failure-containment, and
+cleanup contract. Training adds these job-specific requirements:
+
 - One orchestration owner owns estimator state, checkpoint state, and task sequencing.
 - One writer owner serializes worker-protocol events; one reader owner validates commands.
 - Compute workers receive indexed tasks over immutable inputs and return task-owned values.
 - Pause and cancel are cooperative and checked at documented fold, stage, epoch, batch, and adapter boundaries.
 - Cancel removes no completed immutable artifacts and leaves auditable job metadata.
 - Unexpected pipe closure, process exit, heartbeat expiry, or protocol violation triggers worker cleanup and state reconciliation.
-- Every worker process, thread, queue, and library pool has a bounded shutdown path; tests detect leaked processes and threads.
+- Worker cleanup reconciles job state and preserves completed immutable
+  artifacts; verification detects leaked processes, threads, mappings, and
+  leases.
 
 ## Checkpointing
 
