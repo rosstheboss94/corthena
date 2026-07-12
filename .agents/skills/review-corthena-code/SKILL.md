@@ -9,7 +9,8 @@ Perform an evidence-based, read-only review. Prioritize defects that can affect 
 
 ## Establish the review target
 
-1. Treat the directory containing the repository `AGENTS.md` and `specs/` as the workspace root.
+1. Treat `python_migration/` as the migration workspace root and
+   `python_migration/AGENTS.md` as its routing authority.
 2. Use an explicit user-supplied file set, diff, commit, or range when provided.
 3. Otherwise inspect staged, unstaged, and untracked changes within the workspace root.
 4. Confine every search, status, and diff operation to the workspace root. Never enumerate or review paths above it.
@@ -18,11 +19,11 @@ Perform an evidence-based, read-only review. Prioritize defects that can affect 
 
 ## Ground the review
 
-1. Read the repository `AGENTS.md`.
-2. Read `specs/quality.md` and only the owning specifications selected by the routing table in `AGENTS.md`.
-3. Read `specs/README.md` when the change crosses subsystem boundaries or ownership is unclear.
-4. Read `specs/technology-stack.md` for dependency, packaging, build, extension, or tooling changes.
-5. Read `specs/api.md` for public or process-boundary changes, plus the owning domain specification.
+1. Read `python_migration/AGENTS.md`.
+2. Read `python_migration/specs/quality.md` and only the owning specifications selected by its routing table.
+3. Read `python_migration/specs/README.md` when the change crosses subsystem boundaries or ownership is unclear.
+4. Read `python_migration/specs/technology-stack.md` for dependency, packaging, build, extension, or tooling changes.
+5. Read `python_migration/specs/api.md` for public or process-boundary changes, plus the owning domain specification.
 6. Inspect `screenshots/` only for visual-design changes.
 7. Treat living specifications as canonical. Report code/specification conflicts rather than silently choosing one.
 8. Check whether changed behavior or a public contract also updates its canonical specification. Require an ADR only for a decision with meaningful alternatives and lasting consequences.
@@ -34,16 +35,16 @@ Read the complete target diff and enough surrounding code, tests, types, callers
 Apply the checks relevant to the target:
 
 - Preserve future-data isolation in features, targets, splits, evaluation, and execution timing.
-- Preserve deterministic results across goroutine counts, worker counts, task completion orders, serialization, seeds, clocks, and ID sources.
-- Verify goroutine ownership, termination, cancellation, channel closure and buffering, lock boundaries, immutable shared inputs, and task-owned mutable outputs.
+- Preserve deterministic results across process, thread, worker, and task counts; completion orders; serialization; seeds; clocks; and ID sources.
+- Verify process, thread, task, and queue ownership; termination; cancellation; queue closure and buffering; lock boundaries; immutable shared inputs; and task-owned mutable outputs.
 - Keep Raylib and Raygui calls on the locked UI OS thread. Keep filesystem, database, network, decoding, simulation, and training work off the render thread.
 - Keep completed runs and model artifacts immutable.
 - Enforce concrete typed models, validated DTOs, explicit serialized fields, exhaustive enum handling, contextual errors, and machine-testable causes.
 - Keep native, `unsafe`, Arrow, SQLite, Windows handle, and weakly typed conversions inside narrow adapters.
 - Verify resource ownership, idempotent cleanup, bounded waits, deadlines, and failure behavior.
-- Enforce the approved Go-only stack and dependency responsibilities. Flag unapproved dependencies, external runtime ML, hidden thread pools, and duplicate frameworks.
+- Enforce the approved Python/Cython stack and dependency responsibilities. Flag unapproved dependencies, exposed library artifacts, hidden thread pools, and duplicate frameworks.
 - Check backward compatibility, storage and artifact versioning, migrations, protocol framing, and rejection of corrupt or incompatible inputs when applicable.
-- Check tests for the changed behavior, failure paths, leakage, cancellation, determinism, races, goroutine leaks, and UI-thread enforcement according to risk.
+- Check tests for the changed behavior, failure paths, leakage, cancellation, determinism, lifecycle leaks, and UI-thread enforcement according to risk.
 - Verify that domain behavior does not move into UI render functions.
 
 Report a finding only when the change introduces or exposes a concrete problem and the evidence supports it. Do not report speculative concerns, generic hardening ideas, pre-existing defects unrelated to the target, or stylistic preferences.
@@ -53,8 +54,8 @@ Report a finding only when the change introduces or exposes a concrete problem a
 Run focused, non-mutating checks that materially confirm or reject suspected defects. Use only commands defined by project files that currently exist.
 
 - Run owning package tests for implementation changes.
-- Add race-enabled tests for concurrency-sensitive packages.
-- Add broader compilation, `go vet`, Staticcheck, vulnerability, integration, determinism, or UI checks only when the changed surface warrants them and their configuration exists.
+- Add focused process/thread/task lifecycle tests for concurrency-sensitive packages.
+- Add applicable configured Ruff, Pyright, pytest, vulnerability, integration, determinism, Cython-build, or UI checks only when the changed surface warrants them and their configuration exists.
 - Use diff/check modes for formatting tools; never rewrite reviewed files.
 - Record commands that could not run and why. Do not claim unexecuted checks passed.
 - Do not invent setup, test, lint, build, or launch commands while the repository remains specification-only.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Corthena Models and Inference"
+  short_description: "Implement Phase 9 model registry and inference workflows"
+  default_prompt: "Use $build-corthena-models-and-inference to implement a Phase 9 Models or Inference workflow."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Corthena Models and Inference"
+  short_description: "Verify Phase 9 model registry and inference workflows"
+  default_prompt: "Use $verify-corthena-models-and-inference to verify a Phase 9 Models or Inference workflow."

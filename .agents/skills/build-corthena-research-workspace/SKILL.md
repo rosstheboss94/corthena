@@ -1,6 +1,6 @@
 ---
 name: build-corthena-research-workspace
-description: Implement Corthena roadmap Phase 6's polished Research vertical slice and typed client workflow. Use when creating or changing the Research OHLCV chart, feature browser, series inspector, target preview, distributions, row table, Research link synchronization, Research query DTOs/effects, deterministic demo research data, or loading, error, reconnect, cancellation, and stale-result panel behavior.
+description: "Build Phase 6 Research workspace behavior: OHLCV, features, targets, linked queries, deterministic demo data, effects, and panel states."
 ---
 
 # Build Corthena Research Workspace
@@ -11,12 +11,12 @@ thread.
 
 ## Ground the change
 
-1. Read `AGENTS.md`, Phase 6 in `specs/roadmap.md`,
-   `specs/frontend/workspaces.md`, `specs/frontend/foundation.md`,
-   `specs/frontend/visualization.md`, `specs/data-and-features.md`, and
-   `specs/quality.md`.
-2. Read `specs/api.md` for client or Arrow boundary changes. Read
-   `specs/technology-stack.md` for dependency or native-adapter changes.
+1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
+   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
+   `python_migration/specs/frontend/visualization.md`, `python_migration/specs/data-and-features.md`, and
+   `python_migration/specs/quality.md`.
+2. Read `python_migration/specs/api.md` for client or Arrow boundary changes. Read
+   `python_migration/specs/technology-stack.md` for dependency or native-adapter changes.
 3. Inspect the existing app state, effects runtime, simulator, link groups,
    Phase 5 chart/table packages, and native renderer before adding types or
    packages. Preserve unrelated workspace changes.
@@ -32,7 +32,7 @@ thread.
   Phase 5 render-ready buffers; clone mutable slices at boundaries.
 - Extend `FrontendClient`, effects, and `DemoCoordinator` together. Panels must
   depend only on typed state/actions/effects and never import the simulator.
-- Update `specs/api.md` when a public or process contract changes; do not define
+- Update `python_migration/specs/api.md` when a public or process contract changes; do not define
   real coordinator endpoints solely to satisfy the demo implementation.
 
 ## Build deterministic asynchronous behavior
@@ -83,10 +83,9 @@ thread.
   client-boundary tests while implementing each slice.
 - Run `$verify-corthena-research-vertical-slice` and, for visualization kernel
   changes, `$verify-corthena-visualization-performance`.
-- Run `gofmt`, `go build ./...`, `go test ./...`, `go vet ./...`, Staticcheck,
-  applicable race tests, hidden smoke launches, and `govulncheck`. Use
-  `$go-windows-compat-gate` only after dependency, native, toolchain, or shell
-  changes.
+- Hand off to `$verify-corthena-research-vertical-slice` and apply the focused
+  quality route; use `$python-windows-compat-gate` for dependency, native,
+  toolchain, or shell changes.
 - Update living specifications for behavior or contract changes. Do not mark
   Phase 6 complete while any panel, scenario, leakage test, client-boundary
   path, golden matrix, or required quality gate is missing.

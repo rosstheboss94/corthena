@@ -44,6 +44,12 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 		if previous == WorkspaceResults && action.Workspace != WorkspaceResults && next.ResultsWorkspace.State == WorkspaceLoading {
 			effects = append(effects, CancelResultsEffect{ID: "results-cancel-workspace", Generation: next.ResultsWorkspace.Generation})
 		}
+		if previous == WorkspaceModels && action.Workspace != WorkspaceModels && next.ModelsWorkspace.State == WorkspaceLoading {
+			effects = append(effects, CancelModelsEffect{ID: "models-cancel-workspace", Generation: next.ModelsWorkspace.Generation})
+		}
+		if previous == WorkspaceInference && action.Workspace != WorkspaceInference && next.InferenceWorkspace.State == WorkspaceLoading {
+			effects = append(effects, CancelInferenceEffect{ID: "inference-cancel-workspace", Generation: next.InferenceWorkspace.Generation})
+		}
 		if action.Workspace == WorkspaceData {
 			effect, err := refreshDataWorkspace(&next)
 			if err != nil {
@@ -82,6 +88,22 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 				return state, nil, err
 			}
 			effects = append(effects, effect)
+		}
+		if action.Workspace == WorkspaceModels {
+			effect, err := refreshModelsWorkspace(&next)
+			if err != nil {
+				return state, nil, err
+			}
+			effects = append(effects, effect)
+		}
+		if action.Workspace == WorkspaceInference {
+			effect, err := refreshInferenceWorkspace(&next)
+			if err != nil {
+				return state, nil, err
+			}
+			if effect != nil {
+				effects = append(effects, effect)
+			}
 		}
 		return next, effects, nil
 	case SetLinkContextAction:
@@ -726,6 +748,119 @@ func Reduce(state AppState, action UIAction) (AppState, []UIEffect, error) {
 		next.ResultsWorkspace.State = WorkspaceCancelled
 		next.ResultsWorkspace.Stale = next.ResultsWorkspace.Snapshot.Query.Generation != 0
 		return next, nil, nil
+	case RequestModelsWorkspaceAction:
+		effect, err := beginModelsQuery(&next, action.Query)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SetModelsScenarioAction:
+		if !action.Scenario.Valid() {
+			return state, nil, fmt.Errorf("%w: invalid Models scenario %q", ErrInvariant, action.Scenario)
+		}
+		next.ModelsWorkspace.Scenario = action.Scenario
+		effect, err := refreshModelsWorkspace(&next)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SelectModelArtifactAction:
+		artifact, found := findModelArtifact(next.ModelsWorkspace.Snapshot.Registry, action.ModelID)
+		if !found || action.Tree < 0 || action.Tree >= len(artifact.Trees) {
+			return state, nil, fmt.Errorf("%w: unknown model or tree", ErrInvariant)
+		}
+		next.ModelsWorkspace.SelectedModelID = action.ModelID
+		next.ModelsWorkspace.SelectedTree = action.Tree
+		next.LinkContext.ModelID = action.ModelID
+		return next, nil, nil
+	case BeginAliasAssignmentAction:
+		command := action.Command
+		command.Alias = normalizedModelAlias(command.Alias)
+		if command.CorrelationID == "" || command.CommandID == "" || command.Generation == 0 || command.Alias == "" || command.ModelID == "" {
+			return state, nil, fmt.Errorf("%w: alias command identity is required", ErrInvalidModels)
+		}
+		if command.Generation != next.ModelsWorkspace.Generation || !containsModelArtifact(next.ModelsWorkspace.Snapshot.Registry, command.ModelID) {
+			return state, nil, fmt.Errorf("%w: alias command does not target the current registry", ErrInvariant)
+		}
+		command.Confirmed = true
+		next.ModelsWorkspace.PendingAlias = command
+		next.ModelsWorkspace.AwaitingConfirm = true
+		return next, nil, nil
+	case ConfirmAliasAssignmentAction:
+		command := next.ModelsWorkspace.PendingAlias
+		if !next.ModelsWorkspace.AwaitingConfirm || command.CommandID == "" || action.CommandID != command.CommandID {
+			return state, nil, fmt.Errorf("%w: no matching alias confirmation is pending", ErrInvariant)
+		}
+		if err := command.Validate(); err != nil {
+			return state, nil, err
+		}
+		next.ModelsWorkspace.AwaitingConfirm = false
+		return next, []UIEffect{AssignModelAliasEffect{ID: EffectID(command.CommandID), Command: command}}, nil
+	case ModelsQueryFailedAction:
+		if action.Generation != next.ModelsWorkspace.Generation {
+			return next, nil, nil
+		}
+		next.ModelsWorkspace.State = workspaceModelsInferenceFailure(action.Error.Code)
+		next.ModelsWorkspace.Stale = next.ModelsWorkspace.Snapshot.Query.Generation != 0
+		next.ModelsWorkspace.Error = action.Error
+		return next, nil, nil
+	case ModelsQueryCancelledAction:
+		if action.Generation != next.ModelsWorkspace.Generation {
+			return next, nil, nil
+		}
+		next.ModelsWorkspace.State = WorkspaceCancelled
+		next.ModelsWorkspace.Stale = next.ModelsWorkspace.Snapshot.Query.Generation != 0
+		return next, nil, nil
+	case RequestInferenceWorkspaceAction:
+		effect, err := beginInferenceQuery(&next, action.Query)
+		if err != nil {
+			return state, nil, err
+		}
+		return next, []UIEffect{effect}, nil
+	case SetInferenceScenarioAction:
+		if !action.Scenario.Valid() {
+			return state, nil, fmt.Errorf("%w: invalid Inference scenario %q", ErrInvariant, action.Scenario)
+		}
+		next.InferenceWorkspace.Scenario = action.Scenario
+		effect, err := refreshInferenceWorkspace(&next)
+		if err != nil {
+			return state, nil, err
+		}
+		if effect == nil {
+			return next, nil, nil
+		}
+		return next, []UIEffect{effect}, nil
+	case SelectInferenceSymbolAction:
+		if !containsPredictionSymbol(next.InferenceWorkspace.Snapshot.Output.Predictions, action.Symbol) {
+			return state, nil, fmt.Errorf("%w: unknown prediction symbol %q", ErrInvariant, action.Symbol)
+		}
+		next.InferenceWorkspace.SelectedSymbol = action.Symbol
+		return next, nil, nil
+	case RequestInferenceExportAction:
+		if err := action.Command.Validate(); err != nil {
+			return state, nil, err
+		}
+		if action.Command.Generation != next.InferenceWorkspace.Generation || !next.InferenceWorkspace.Snapshot.HasOutput ||
+			action.Command.InferenceID != next.InferenceWorkspace.Snapshot.Output.ID {
+			return state, nil, fmt.Errorf("%w: export command does not target current complete output", ErrInvariant)
+		}
+		next.InferenceWorkspace.PendingExport = action.Command
+		return next, []UIEffect{ExportInferenceEffect{ID: EffectID(action.Command.CommandID), Command: action.Command}}, nil
+	case InferenceQueryFailedAction:
+		if action.Generation != next.InferenceWorkspace.Generation {
+			return next, nil, nil
+		}
+		next.InferenceWorkspace.State = workspaceModelsInferenceFailure(action.Error.Code)
+		next.InferenceWorkspace.Stale = next.InferenceWorkspace.Snapshot.Query.Generation != 0
+		next.InferenceWorkspace.Error = action.Error
+		return next, nil, nil
+	case InferenceQueryCancelledAction:
+		if action.Generation != next.InferenceWorkspace.Generation {
+			return next, nil, nil
+		}
+		next.InferenceWorkspace.State = WorkspaceCancelled
+		next.InferenceWorkspace.Stale = next.InferenceWorkspace.Snapshot.Query.Generation != 0
+		return next, nil, nil
 	case ClientMessageAction:
 		return reduceClientMessage(next, action.Message)
 	case LayoutsLoadedAction:
@@ -984,6 +1119,44 @@ func reduceClientMessage(state AppState, message ClientMessage) (AppState, []UIE
 			state.Connection.Detail = "Results recovered and reconciled"
 		}
 		return state, nil, nil
+	case ModelsWorkspaceMessage:
+		if !applyModelsWorkspaceResponse(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		if message.Snapshot.Degraded {
+			state.Connection.State = ConnectionDegraded
+			state.Connection.Detail = "Model registry is degraded; completed artifacts remain available"
+		} else if message.Snapshot.Query.Scenario == ModelsScenarioRecovered {
+			state.Connection.State = ConnectionConnected
+			state.Connection.Detail = "Model registry recovered and reconciled"
+		}
+		return state, nil, nil
+	case AliasAssignedMessage:
+		if !applyAliasAssigned(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		return state, nil, nil
+	case InferenceWorkspaceMessage:
+		if !applyInferenceWorkspaceResponse(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		if message.Snapshot.Degraded {
+			state.Connection.State = ConnectionDegraded
+			state.Connection.Detail = "Inference is degraded; complete predictions remain available"
+		} else if message.Snapshot.Query.Scenario == InferenceScenarioRecovered {
+			state.Connection.State = ConnectionConnected
+			state.Connection.Detail = "Inference recovered and reconciled"
+		}
+		return state, nil, nil
+	case InferenceExportMessage:
+		if !applyInferenceExport(&state, message) {
+			return state, nil, nil
+		}
+		state.applyEventEnvelope(message.Event)
+		return state, nil, nil
 	case ComponentStatusMessage:
 		state.Components = upsertComponent(state.Components, message.Component)
 		state.applyEventEnvelope(message.Event)
@@ -1046,8 +1219,33 @@ func refreshWorkspacesAfterCatalog(state AppState) (AppState, []UIEffect, error)
 			return state, nil, err
 		}
 		effects = append(effects, effect)
+	case WorkspaceModels:
+		effect, err := refreshModelsWorkspace(&state)
+		if err != nil {
+			return state, nil, err
+		}
+		effects = append(effects, effect)
+	case WorkspaceInference:
+		effect, err := refreshInferenceWorkspace(&state)
+		if err != nil {
+			return state, nil, err
+		}
+		if effect != nil {
+			effects = append(effects, effect)
+		}
 	}
 	return state, effects, nil
+}
+
+func workspaceModelsInferenceFailure(code ErrorCode) WorkspaceLoadState {
+	switch code {
+	case ErrorModelsCancelled, ErrorInferenceCancelled:
+		return WorkspaceCancelled
+	case ErrorEffectBusy:
+		return WorkspaceBusy
+	default:
+		return WorkspaceFailed
+	}
 }
 
 func commitAllLayouts(

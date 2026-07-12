@@ -23,6 +23,9 @@ type DelayProfile struct {
 	Experiments time.Duration
 	Jobs        time.Duration
 	Results     time.Duration
+	Models      time.Duration
+	Inference   time.Duration
+	Export      time.Duration
 }
 
 // FailureProfile configures deterministic simulated failures.
@@ -37,6 +40,9 @@ type FailureProfile struct {
 	Experiments       bool
 	Jobs              bool
 	Results           bool
+	Models            bool
+	Inference         bool
+	Export            bool
 }
 
 // Options configures a DemoCoordinator.
@@ -50,22 +56,27 @@ type Options struct {
 // DemoCoordinator implements appstate.FrontendClient with deterministic dummy
 // data and events.
 type DemoCoordinator struct {
-	mu            sync.RWMutex
-	snapshot      appstate.SnapshotMessage
-	events        []appstate.ClientMessage
-	delays        DelayProfile
-	failures      FailureProfile
-	closed        chan struct{}
-	seed          uint64
-	researchCache *chart.FrameCache
-	once          sync.Once
-	imports       []appstate.DataImportRecord
-	logs          []appstate.DataLogEntry
-	definitions   []appstate.ExperimentDefinition
-	submissions   map[appstate.CorrelationID]appstate.ExperimentDefinition
-	jobs          appstate.JobsWorkspaceSnapshot
-	results       appstate.ResultsWorkspaceSnapshot
-	jobCommands   map[appstate.CorrelationID]appstate.JobUpdateMessage
+	mu               sync.RWMutex
+	snapshot         appstate.SnapshotMessage
+	events           []appstate.ClientMessage
+	delays           DelayProfile
+	failures         FailureProfile
+	closed           chan struct{}
+	seed             uint64
+	researchCache    *chart.FrameCache
+	once             sync.Once
+	imports          []appstate.DataImportRecord
+	logs             []appstate.DataLogEntry
+	definitions      []appstate.ExperimentDefinition
+	submissions      map[appstate.CorrelationID]appstate.ExperimentDefinition
+	jobs             appstate.JobsWorkspaceSnapshot
+	results          appstate.ResultsWorkspaceSnapshot
+	jobCommands      map[appstate.CorrelationID]appstate.JobUpdateMessage
+	modelRegistry    []appstate.ModelArtifact
+	aliasHistory     []appstate.AliasHistoryEntry
+	aliasCommands    map[appstate.CorrelationID]appstate.AliasAssignedMessage
+	inferenceHistory []appstate.InferenceOutput
+	exportCommands   map[appstate.CorrelationID]appstate.InferenceExportMessage
 }
 
 // NewDemoCoordinator creates a seeded demo client.
@@ -81,6 +92,7 @@ func NewDemoCoordinator(options Options) (*DemoCoordinator, error) {
 	now := clock.Now().UTC()
 	generator := newGenerator(seed)
 	snapshot := buildSnapshot(now, &generator)
+	registry := buildDemoModelRegistry(now, snapshot.Models, seed)
 	events := buildEvents(now, snapshot, &generator)
 	researchCache, err := chart.NewFrameCache(32 << 20)
 	if err != nil {
@@ -97,6 +109,13 @@ func NewDemoCoordinator(options Options) (*DemoCoordinator, error) {
 		definitions:   buildDemoExperimentDefinitions(now, snapshot.Datasets),
 		submissions:   make(map[appstate.CorrelationID]appstate.ExperimentDefinition),
 		jobCommands:   make(map[appstate.CorrelationID]appstate.JobUpdateMessage),
+		modelRegistry: registry,
+		aliasHistory: []appstate.AliasHistoryEntry{
+			{Alias: "candidate", ModelID: "model-demo-candidate", CommandID: "seed-alias-candidate", ChangedAt: now.Add(-21 * time.Minute)},
+			{Alias: "champion", ModelID: "model-demo-champion", CommandID: "seed-alias-champion", ChangedAt: now.Add(-20 * time.Minute)},
+		},
+		aliasCommands:  make(map[appstate.CorrelationID]appstate.AliasAssignedMessage),
+		exportCommands: make(map[appstate.CorrelationID]appstate.InferenceExportMessage),
 	}, nil
 }
 
@@ -495,6 +514,10 @@ func buildModels(
 	results []appstate.RunResultSummary,
 	generator *demoGenerator,
 ) []appstate.ModelSummary {
+	candidateRun := results[0].ID
+	if len(results) > 1 {
+		candidateRun = results[1].ID
+	}
 	return []appstate.ModelSummary{
 		{
 			ID:                  "model-demo-champion",
@@ -505,6 +528,17 @@ func buildModels(
 			TrainingCutoff:      now.AddDate(0, 0, -1),
 			CreatedAt:           now.Add(-25 * time.Minute),
 			ArtifactFingerprint: fmt.Sprintf("model-demo-%04d", generator.nextRange(0, 9999)),
+			Immutable:           true,
+		},
+		{
+			ID:                  "model-demo-candidate",
+			RunID:               candidateRun,
+			Kind:                appstate.ModelGradientBoost,
+			Alias:               "candidate",
+			FeatureNames:        []appstate.FeatureName{"ret_5", "volatility_20", "cross_rank_1"},
+			TrainingCutoff:      now.AddDate(0, 0, -1),
+			CreatedAt:           now.Add(-18 * time.Minute),
+			ArtifactFingerprint: fmt.Sprintf("model-candidate-%04d", generator.nextRange(0, 9999)),
 			Immutable:           true,
 		},
 	}
@@ -625,6 +659,14 @@ func messageEventID(message appstate.ClientMessage) appstate.EventID {
 	case appstate.JobsWorkspaceMessage:
 		return message.Event.ID
 	case appstate.ResultsWorkspaceMessage:
+		return message.Event.ID
+	case appstate.ModelsWorkspaceMessage:
+		return message.Event.ID
+	case appstate.AliasAssignedMessage:
+		return message.Event.ID
+	case appstate.InferenceWorkspaceMessage:
+		return message.Event.ID
+	case appstate.InferenceExportMessage:
 		return message.Event.ID
 	default:
 		return ""

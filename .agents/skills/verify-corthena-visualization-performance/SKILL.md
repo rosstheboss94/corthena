@@ -1,6 +1,6 @@
 ---
 name: verify-corthena-visualization-performance
-description: Verify or add verification for Corthena roadmap Phase 5 chart and table correctness, determinism, cancellation, bounded memory and work, virtualization, interaction replay, race safety, benchmarks, and Raylib golden images. Use when testing, auditing, benchmarking, profiling, validating, or closing acceptance gaps in chart transforms, LOD, visualization caches, generation tokens, virtualized tables, or rendering performance.
+description: "Verify Phase 5 charts and tables: transforms, LOD, bounded caches, virtualization, replay, races, benchmarks, and Raylib goldens."
 ---
 
 # Verify Corthena Visualization Performance
@@ -10,10 +10,10 @@ bounded, race-free, and proportional to visible work.
 
 ## Ground verification
 
-1. Read `AGENTS.md`, Phase 5 in `specs/roadmap.md`,
-   `specs/frontend/visualization.md`, `specs/frontend/foundation.md`, and
-   `specs/quality.md`.
-2. Read `specs/technology-stack.md` for native, dependency, or tooling checks.
+1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
+   `python_migration/specs/frontend/visualization.md`, `python_migration/specs/frontend/foundation.md`, and
+   `python_migration/specs/quality.md`.
+2. Read `python_migration/specs/technology-stack.md` for native, dependency, or tooling checks.
 3. Inspect the implementation, existing tests, benchmarks, and golden harness
    before selecting checks. Preserve unrelated changes.
 4. When asked only to verify or audit, remain read-only. Add tests, benchmarks,
@@ -36,7 +36,7 @@ bounded, race-free, and proportional to visible work.
 
 - Test request deduplication, cancellation before and during work, channel
   closure, queue saturation, stale generations, and shutdown without leaks.
-- Require immutable published buffers and run race-enabled tests for caches,
+- Require immutable published buffers and run lifecycle/concurrency tests for caches,
   workers, reducers, and client-facing visualization paths.
 - Test byte accounting and deterministic LRU eviction at exact boundaries,
   including entries larger than the budget and replacement of existing keys.
@@ -66,9 +66,9 @@ bounded, race-free, and proportional to visible work.
 
 ## Conclude the gate
 
-- Run focused tests first, then `gofmt -l`, `go build ./...`, `go test ./...`,
-  `go vet ./...`, Staticcheck, applicable `go test -race`, and `govulncheck`.
-- Use `$go-windows-compat-gate` when native adapters, dependencies, the
+- Run focused tests, then applicable configured `ruff format --check`, `ruff check`,
+  `pyright`, `pytest`, `hypothesis`, `pytest-benchmark`, and vulnerability checks.
+- Use `$python-windows-compat-gate` when native adapters, dependencies, the
   application shell, or toolchain changed.
 - Report exact commands, results, skipped checks, benchmark context, golden
   differences, and residual risks. Do not mark Phase 5 complete when a required

@@ -48,6 +48,10 @@ func (runtime *Runtime) startWorkflow(effect appstate.UIEffect) {
 				code = appstate.ErrorJobsFailed
 			case strings.HasPrefix(key, "results"):
 				code = appstate.ErrorResultsFailed
+			case strings.HasPrefix(key, "models"):
+				code = appstate.ErrorModelsFailed
+			case strings.HasPrefix(key, "inference"):
+				code = appstate.ErrorInferenceFailed
 			}
 			retryable := true
 			var typedErr interface{ FrontendError() appstate.ErrorSnapshot }
@@ -65,6 +69,10 @@ func (runtime *Runtime) startWorkflow(effect appstate.UIEffect) {
 					code = appstate.ErrorJobsCancelled
 				case strings.HasPrefix(key, "results"):
 					code = appstate.ErrorResultsCancelled
+				case strings.HasPrefix(key, "models"):
+					code = appstate.ErrorModelsCancelled
+				case strings.HasPrefix(key, "inference"):
+					code = appstate.ErrorInferenceCancelled
 				}
 			}
 			runtime.sendWorkflowFailure(key, generation, err, code, retryable)
@@ -98,6 +106,14 @@ func (runtime *Runtime) runWorkflow(ctx context.Context, effect appstate.UIEffec
 		return runtime.client.ControlJob(ctx, effect.Command)
 	case appstate.QueryResultsWorkspaceEffect:
 		return runtime.client.ResultsWorkspace(ctx, effect.Query)
+	case appstate.QueryModelsWorkspaceEffect:
+		return runtime.client.ModelsWorkspace(ctx, effect.Query)
+	case appstate.AssignModelAliasEffect:
+		return runtime.client.AssignModelAlias(ctx, effect.Command)
+	case appstate.QueryInferenceWorkspaceEffect:
+		return runtime.client.InferenceWorkspace(ctx, effect.Query)
+	case appstate.ExportInferenceEffect:
+		return runtime.client.ExportInference(ctx, effect.Command)
 	default:
 		return nil, fmt.Errorf("unsupported workflow effect %T", effect)
 	}
@@ -124,6 +140,14 @@ func workflowIdentity(effect appstate.UIEffect) (string, uint64, error) {
 		return "jobs-control", effect.Command.Generation, effect.Command.Validate()
 	case appstate.QueryResultsWorkspaceEffect:
 		return "results-query", effect.Query.Generation, effect.Query.Validate()
+	case appstate.QueryModelsWorkspaceEffect:
+		return "models-query", effect.Query.Generation, effect.Query.Validate()
+	case appstate.AssignModelAliasEffect:
+		return "models-alias", effect.Command.Generation, effect.Command.Validate()
+	case appstate.QueryInferenceWorkspaceEffect:
+		return "inference-query", effect.Query.Generation, effect.Query.Validate()
+	case appstate.ExportInferenceEffect:
+		return "inference-export", effect.Command.Generation, effect.Command.Validate()
 	default:
 		return "", 0, fmt.Errorf("unsupported workflow effect %T", effect)
 	}
@@ -135,7 +159,8 @@ func (runtime *Runtime) sendWorkflowFailure(key string, generation uint64, err e
 	if errors.As(err, &typedErr) {
 		snapshot = typedErr.FrontendError()
 		if code == appstate.ErrorDataCancelled || code == appstate.ErrorExperimentCancelled ||
-			code == appstate.ErrorJobsCancelled || code == appstate.ErrorResultsCancelled {
+			code == appstate.ErrorJobsCancelled || code == appstate.ErrorResultsCancelled ||
+			code == appstate.ErrorModelsCancelled || code == appstate.ErrorInferenceCancelled {
 			snapshot.Code = code
 			snapshot.Message = "workflow request cancelled"
 		}
@@ -150,6 +175,14 @@ func (runtime *Runtime) sendWorkflowFailure(key string, generation uint64, err e
 	}
 	if strings.HasPrefix(key, "results") {
 		runtime.sendAction(appstate.ResultsQueryFailedAction{Generation: generation, FailedAt: runtime.clock.Now(), Error: snapshot})
+		return
+	}
+	if strings.HasPrefix(key, "models") {
+		runtime.sendAction(appstate.ModelsQueryFailedAction{Generation: generation, FailedAt: runtime.clock.Now(), Error: snapshot})
+		return
+	}
+	if strings.HasPrefix(key, "inference") {
+		runtime.sendAction(appstate.InferenceQueryFailedAction{Generation: generation, FailedAt: runtime.clock.Now(), Error: snapshot})
 		return
 	}
 	runtime.sendAction(appstate.DataQueryFailedAction{Generation: generation, FailedAt: runtime.clock.Now(), Error: snapshot})
@@ -168,6 +201,12 @@ func (runtime *Runtime) cancelWorkflow(effect appstate.UIEffect) {
 		generation = typed.Generation
 	} else if typed, ok := effect.(appstate.CancelResultsEffect); ok {
 		prefix = "results"
+		generation = typed.Generation
+	} else if typed, ok := effect.(appstate.CancelModelsEffect); ok {
+		prefix = "models"
+		generation = typed.Generation
+	} else if typed, ok := effect.(appstate.CancelInferenceEffect); ok {
+		prefix = "inference"
 		generation = typed.Generation
 	}
 	runtime.workflowMu.Lock()
@@ -191,6 +230,10 @@ func (runtime *Runtime) cancelWorkflow(effect appstate.UIEffect) {
 			runtime.sendAction(appstate.JobsQueryCancelledAction{Generation: currentGeneration, CancelledAt: runtime.clock.Now()})
 		case "results":
 			runtime.sendAction(appstate.ResultsQueryCancelledAction{Generation: currentGeneration, CancelledAt: runtime.clock.Now()})
+		case "models":
+			runtime.sendAction(appstate.ModelsQueryCancelledAction{Generation: currentGeneration, CancelledAt: runtime.clock.Now()})
+		case "inference":
+			runtime.sendAction(appstate.InferenceQueryCancelledAction{Generation: currentGeneration, CancelledAt: runtime.clock.Now()})
 		}
 	}
 }

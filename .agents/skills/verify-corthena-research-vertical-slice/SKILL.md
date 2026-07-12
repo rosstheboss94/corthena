@@ -1,6 +1,6 @@
 ---
 name: verify-corthena-research-vertical-slice
-description: Verify or add verification for Corthena roadmap Phase 6's Research vertical slice. Use when testing, auditing, profiling, or closing acceptance gaps in Research panels, linked dataset/symbol/interval/range behavior, typed research client requests, deterministic demo data, leakage-safe feature and target presentation, loading/error/reconnect/cancellation scenarios, interaction replay, or Research golden images.
+description: "Verify Phase 6 Research: linked panels, typed queries, deterministic data, leakage safety, cancellation, replay, performance, and goldens."
 ---
 
 # Verify Corthena Research Vertical Slice
@@ -11,10 +11,10 @@ boundary.
 
 ## Ground verification
 
-1. Read `AGENTS.md`, Phase 6 in `specs/roadmap.md`,
-   `specs/frontend/workspaces.md`, `specs/frontend/foundation.md`,
-   `specs/frontend/visualization.md`, `specs/data-and-features.md`,
-   `specs/api.md`, and `specs/quality.md`.
+1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
+   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
+   `python_migration/specs/frontend/visualization.md`, `python_migration/specs/data-and-features.md`,
+   `python_migration/specs/api.md`, and `python_migration/specs/quality.md`.
 2. Inspect Research app state, actions/effects, client types, simulator data,
    panel renderers, Phase 5 kernels, existing tests, benchmarks, and golden
    harness before selecting checks. Preserve unrelated changes.
@@ -31,7 +31,7 @@ boundary.
   publication, chronologically ordered, and stable-ID keyed.
 - Test deduplication, cancellation before and during work, stale generation
   rejection, queue saturation, bounded draining, channel closure, and shutdown
-  without leaks. Run these paths with the race detector.
+  without leaks. Assert explicit process/thread/task cleanup.
 
 ## Replay linked panel behavior
 
@@ -74,10 +74,10 @@ boundary.
 
 ## Conclude the gate
 
-- Run focused tests first, then `gofmt -l`, `go build ./...`, `go test ./...`,
-  `go vet ./...`, Staticcheck, applicable `go test -race`, hidden smoke
-  launches, and `govulncheck`.
-- Use `$go-windows-compat-gate` only when dependencies, native adapters, the
+- Run focused tests, then applicable configured `ruff format --check`, `ruff check`,
+  `pyright`, `pytest`, `hypothesis`, `pytest-benchmark`, vulnerability scans, and hidden smoke
+  launches.
+- Use `$python-windows-compat-gate` only when dependencies, native adapters, the
   application shell, or toolchain changed.
 - Report exact commands, scenario coverage, replay determinism, leakage cases,
   benchmark context, golden differences, skipped checks, and residual risks.

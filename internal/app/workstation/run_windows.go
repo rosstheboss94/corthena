@@ -34,6 +34,8 @@ type Options struct {
 	ExperimentScenario appstate.ExperimentScenario
 	JobsScenario       appstate.JobsScenario
 	ResultsScenario    appstate.ResultsScenario
+	ModelsScenario     appstate.ModelsScenario
+	InferenceScenario  appstate.InferenceScenario
 	// DisableEvents omits the unrelated demo event stream for deterministic
 	// golden capture while retaining snapshot and workspace effects.
 	DisableEvents bool
@@ -85,6 +87,12 @@ func Run(ctx context.Context, options Options) (resultErr error) {
 	}
 	if options.ResultsScenario != "" && !options.ResultsScenario.Valid() {
 		return fmt.Errorf("run workstation: unsupported Results scenario %q", options.ResultsScenario)
+	}
+	if options.ModelsScenario != "" && !options.ModelsScenario.Valid() {
+		return fmt.Errorf("run workstation: unsupported Models scenario %q", options.ModelsScenario)
+	}
+	if options.InferenceScenario != "" && !options.InferenceScenario.Valid() {
+		return fmt.Errorf("run workstation: unsupported Inference scenario %q", options.InferenceScenario)
 	}
 	assetSet, err := assets.Load()
 	if err != nil {
@@ -146,6 +154,12 @@ func Run(ctx context.Context, options Options) (resultErr error) {
 	}
 	if options.ResultsScenario != "" {
 		state.ResultsWorkspace.Scenario = options.ResultsScenario
+	}
+	if options.ModelsScenario != "" {
+		state.ModelsWorkspace.Scenario = options.ModelsScenario
+	}
+	if options.InferenceScenario != "" {
+		state.InferenceWorkspace.Scenario = options.InferenceScenario
 	}
 	if options.InitialWorkspace != "" && options.InitialWorkspace != state.ActiveWorkspace {
 		var initialEffects []appstate.UIEffect

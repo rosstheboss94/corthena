@@ -1,6 +1,6 @@
 ---
 name: build-corthena-charts-and-tables
-description: Implement Corthena roadmap Phase 5 first-party Go charts, chart interaction, level-of-detail aggregation, byte-bounded visualization caches, generation-safe asynchronous requests, and virtualized tables. Use when creating or changing chart transforms or layers, viewport behavior, crosshairs, pan/zoom/selection, render-ready buffers, visualization caching, table virtualization, stable row selection, sorting, resizing, pinning, filtering, pagination, or cell copying.
+description: Build Phase 5 first-party charts, LOD, bounded visualization caches, generation-safe requests, and virtualized tables.
 ---
 
 # Build Corthena Charts and Tables
@@ -10,19 +10,20 @@ thread, leaking Raylib values, or making work proportional to source row count.
 
 ## Ground the change
 
-1. Read `AGENTS.md`, Phase 5 in `specs/roadmap.md`,
-   `specs/frontend/visualization.md`, `specs/frontend/foundation.md`, and
-   `specs/quality.md`.
-2. Read `specs/technology-stack.md` for dependencies or native adapter work.
-3. Read `specs/frontend/workspaces.md` only when panel workflow behavior is in
-   scope. Read `specs/api.md` only for client or Arrow request changes.
+1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
+   `python_migration/specs/frontend/visualization.md`,
+   `python_migration/specs/frontend/foundation.md`, and
+   `python_migration/specs/quality.md`.
+2. Read `python_migration/specs/technology-stack.md` for dependencies or native adapter work.
+3. Read `python_migration/specs/frontend/workspaces.md` only when panel workflow behavior is in
+   scope. Read `python_migration/specs/api.md` only for client or Arrow request changes.
 4. Inspect existing docking, controls, app state, effects, and native UI package
    boundaries before creating packages. Preserve unrelated workspace changes.
 
 ## Keep visualization kernels pure
 
 - Keep transforms, clipping, tick selection, LOD aggregation, virtualization,
-  sorting, and selection in pure Go packages with no Raylib imports.
+  sorting, and selection in pure Python modules with no Raylib imports.
 - Retain `float64` through transforms and aggregation. Reject non-finite or
   out-of-range coordinates before checked conversion to final `float32` draw
   values.
@@ -47,7 +48,7 @@ thread, leaking Raylib values, or making work proportional to source row count.
 ## Build asynchronous data and caches
 
 - Perform Arrow decode, LOD, sorting, filtering, and request preparation on
-  owned background goroutines with context cancellation and bounded channels.
+  owned background workers with explicit cancellation and bounded queues.
 - Tag requests and results with monotonically ordered generation tokens. Drop
   stale results before they enter visible state.
 - Deduplicate equivalent requests and use a byte-bounded LRU whose accounting
@@ -70,8 +71,8 @@ thread, leaking Raylib values, or making work proportional to source row count.
 - Add hand-calculated transform, clipping, LOD, interaction, stable-ID,
   virtualization, cache, cancellation, and stale-generation tests.
 - Run the owning tests and `$verify-corthena-visualization-performance`.
-- Run `gofmt`, `go build ./...`, `go test ./...`, `go vet ./...`, Staticcheck,
-  applicable race tests, and `govulncheck`. Use `$go-windows-compat-gate` after
-  native adapter, dependency, toolchain, or application-shell changes.
+- Hand off to `$verify-corthena-visualization-performance` and apply the
+  focused quality route; use `$python-windows-compat-gate` for native adapter,
+  dependency, toolchain, or application-shell changes.
 - Update living specifications for behavior changes. Mark Phase 5 complete only
   when every done condition and required gate passes.

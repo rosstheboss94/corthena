@@ -278,6 +278,13 @@ const (
 	ErrorJobsCancelled       ErrorCode = "jobs_cancelled"
 	ErrorResultsFailed       ErrorCode = "results_failed"
 	ErrorResultsCancelled    ErrorCode = "results_cancelled"
+	ErrorModelsFailed        ErrorCode = "models_failed"
+	ErrorModelsCancelled     ErrorCode = "models_cancelled"
+	ErrorInferenceFailed     ErrorCode = "inference_failed"
+	ErrorInferenceCancelled  ErrorCode = "inference_cancelled"
+	ErrorAliasRejected       ErrorCode = "alias_rejected"
+	ErrorCompatibility       ErrorCode = "compatibility"
+	ErrorExportFailed        ErrorCode = "export_failed"
 	ErrorJobControlRejected  ErrorCode = "job_control_rejected"
 	ErrorValidation          ErrorCode = "validation"
 )
@@ -443,6 +450,8 @@ type AppState struct {
 	Experiments           ExperimentsWorkspaceState
 	JobsWorkspace         JobsWorkspaceState
 	ResultsWorkspace      ResultsWorkspaceState
+	ModelsWorkspace       ModelsWorkspaceState
+	InferenceWorkspace    InferenceWorkspaceState
 	Overlays              OverlayState
 	Persistence           PersistenceState
 	PreferencePersistence PersistenceState
@@ -464,6 +473,8 @@ func (state AppState) Clone() AppState {
 	state.Experiments = state.Experiments.Clone()
 	state.JobsWorkspace = state.JobsWorkspace.Clone()
 	state.ResultsWorkspace = state.ResultsWorkspace.Clone()
+	state.ModelsWorkspace = state.ModelsWorkspace.Clone()
+	state.InferenceWorkspace = state.InferenceWorkspace.Clone()
 	state.Overlays = state.Overlays.Clone()
 	return state
 }
@@ -508,14 +519,16 @@ func NewInitialState(clock Clock, ids IDSource) (AppState, []UIEffect, error) {
 				UpdatedAt: now,
 			},
 		},
-		Layouts:          layouts,
-		DefaultLayouts:   cloneLayouts(layouts),
-		Preferences:      DefaultPreferences(),
-		Research:         DefaultResearchWorkspaceState(),
-		Data:             DefaultDataWorkspaceState(),
-		Experiments:      DefaultExperimentsWorkspaceState(),
-		JobsWorkspace:    DefaultJobsWorkspaceState(),
-		ResultsWorkspace: DefaultResultsWorkspaceState(),
+		Layouts:            layouts,
+		DefaultLayouts:     cloneLayouts(layouts),
+		Preferences:        DefaultPreferences(),
+		Research:           DefaultResearchWorkspaceState(),
+		Data:               DefaultDataWorkspaceState(),
+		Experiments:        DefaultExperimentsWorkspaceState(),
+		JobsWorkspace:      DefaultJobsWorkspaceState(),
+		ResultsWorkspace:   DefaultResultsWorkspaceState(),
+		ModelsWorkspace:    DefaultModelsWorkspaceState(),
+		InferenceWorkspace: DefaultInferenceWorkspaceState(),
 	}
 	effects := []UIEffect{
 		LoadExperimentDraftEffect{

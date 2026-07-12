@@ -395,6 +395,88 @@ type ResultsQueryCancelledAction struct {
 
 func (ResultsQueryCancelledAction) isUIAction() {}
 
+// RequestModelsWorkspaceAction starts or supersedes an immutable registry query.
+type RequestModelsWorkspaceAction struct{ Query ModelsWorkspaceQuery }
+
+func (RequestModelsWorkspaceAction) isUIAction() {}
+
+// SetModelsScenarioAction selects a deterministic registry condition.
+type SetModelsScenarioAction struct{ Scenario ModelsScenario }
+
+func (SetModelsScenarioAction) isUIAction() {}
+
+// SelectModelArtifactAction preserves model and tree selection across refreshes.
+type SelectModelArtifactAction struct {
+	ModelID ModelID
+	Tree    int
+}
+
+func (SelectModelArtifactAction) isUIAction() {}
+
+// BeginAliasAssignmentAction requires a separate explicit confirmation step.
+type BeginAliasAssignmentAction struct{ Command AliasAssignmentCommand }
+
+func (BeginAliasAssignmentAction) isUIAction() {}
+
+// ConfirmAliasAssignmentAction submits the previously staged alias transaction.
+type ConfirmAliasAssignmentAction struct{ CommandID CorrelationID }
+
+func (ConfirmAliasAssignmentAction) isUIAction() {}
+
+// ModelsQueryFailedAction records a generation-specific Models failure.
+type ModelsQueryFailedAction struct {
+	Generation uint64
+	FailedAt   time.Time
+	Error      ErrorSnapshot
+}
+
+func (ModelsQueryFailedAction) isUIAction() {}
+
+// ModelsQueryCancelledAction records current-generation cancellation.
+type ModelsQueryCancelledAction struct {
+	Generation  uint64
+	CancelledAt time.Time
+}
+
+func (ModelsQueryCancelledAction) isUIAction() {}
+
+// RequestInferenceWorkspaceAction starts or supersedes compatibility/scoring.
+type RequestInferenceWorkspaceAction struct{ Query InferenceWorkspaceQuery }
+
+func (RequestInferenceWorkspaceAction) isUIAction() {}
+
+// SetInferenceScenarioAction selects a deterministic scoring condition.
+type SetInferenceScenarioAction struct{ Scenario InferenceScenario }
+
+func (SetInferenceScenarioAction) isUIAction() {}
+
+// SelectInferenceSymbolAction selects a stable prediction symbol.
+type SelectInferenceSymbolAction struct{ Symbol Symbol }
+
+func (SelectInferenceSymbolAction) isUIAction() {}
+
+// RequestInferenceExportAction starts idempotent output export preparation.
+type RequestInferenceExportAction struct{ Command ExportInferenceCommand }
+
+func (RequestInferenceExportAction) isUIAction() {}
+
+// InferenceQueryFailedAction records a generation-specific inference failure.
+type InferenceQueryFailedAction struct {
+	Generation uint64
+	FailedAt   time.Time
+	Error      ErrorSnapshot
+}
+
+func (InferenceQueryFailedAction) isUIAction() {}
+
+// InferenceQueryCancelledAction records current-generation cancellation.
+type InferenceQueryCancelledAction struct {
+	Generation  uint64
+	CancelledAt time.Time
+}
+
+func (InferenceQueryCancelledAction) isUIAction() {}
+
 // LayoutsLoadedAction applies an asynchronous startup or named-layout load.
 // BaseRevision prevents a late load from overwriting newer local mutations.
 type LayoutsLoadedAction struct {
@@ -685,3 +767,51 @@ type CancelResultsEffect struct {
 }
 
 func (CancelResultsEffect) isUIEffect() {}
+
+// QueryModelsWorkspaceEffect prepares immutable registry data off-thread.
+type QueryModelsWorkspaceEffect struct {
+	ID    EffectID
+	Query ModelsWorkspaceQuery
+}
+
+func (QueryModelsWorkspaceEffect) isUIEffect() {}
+
+// AssignModelAliasEffect applies one confirmed transactional alias command.
+type AssignModelAliasEffect struct {
+	ID      EffectID
+	Command AliasAssignmentCommand
+}
+
+func (AssignModelAliasEffect) isUIEffect() {}
+
+// CancelModelsEffect cancels the current Models generation.
+type CancelModelsEffect struct {
+	ID         EffectID
+	Generation uint64
+}
+
+func (CancelModelsEffect) isUIEffect() {}
+
+// QueryInferenceWorkspaceEffect prepares compatibility and scoring off-thread.
+type QueryInferenceWorkspaceEffect struct {
+	ID    EffectID
+	Query InferenceWorkspaceQuery
+}
+
+func (QueryInferenceWorkspaceEffect) isUIEffect() {}
+
+// ExportInferenceEffect prepares checksummed export data off-thread.
+type ExportInferenceEffect struct {
+	ID      EffectID
+	Command ExportInferenceCommand
+}
+
+func (ExportInferenceEffect) isUIEffect() {}
+
+// CancelInferenceEffect cancels the current Inference generation.
+type CancelInferenceEffect struct {
+	ID         EffectID
+	Generation uint64
+}
+
+func (CancelInferenceEffect) isUIEffect() {}

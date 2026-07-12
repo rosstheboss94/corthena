@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Best Practices"
+  short_description: "Typed deterministic Python and Cython work"
+  default_prompt: "Use $python-best-practices to implement or review Python/Cython code using Corthena typed deterministic Windows-safe practices."

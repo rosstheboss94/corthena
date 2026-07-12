@@ -1,0 +1,3 @@
+include src/corthena/cython_ext/_compat.pyx
+include src/corthena/cython_ext/_compat.pyi
+

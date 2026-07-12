@@ -1,6 +1,6 @@
 ---
 name: build-corthena-data-and-experiments
-description: Implement Corthena roadmap Phase 7's simulated Data and Experiments workflows. Use when creating or changing catalog/import flows, dataset validation or revisions, Data panels, experiment lists, typed configuration trees or property editors, validation, resource estimates, draft autosave, or immutable experiment submission.
+description: "Build Phase 7 simulated Data and Experiments workflows: catalog/import, validation, configuration, estimates, autosave, and immutable submission."
 ---
 
 # Build Corthena Data and Experiments
@@ -11,11 +11,11 @@ thread.
 
 ## Ground the change
 
-1. Read `AGENTS.md`, Phase 7 in `specs/roadmap.md`,
-   `specs/frontend/workspaces.md`, `specs/frontend/foundation.md`,
-   `specs/data-and-features.md`, and `specs/quality.md`.
-2. Read `specs/api.md` for client or DTO changes, `specs/technology-stack.md`
-   for dependency/tooling changes, and `specs/README.md` when ownership spans
+1. Read `python_migration/AGENTS.md`, `python_migration/specs/routing/phase-7.md`,
+   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
+   `python_migration/specs/data-and-features.md`, and `python_migration/specs/quality.md`.
+2. Read `python_migration/specs/api.md` for client or DTO changes, `python_migration/specs/technology-stack.md`
+   for dependency/tooling changes, and `python_migration/specs/README.md` when ownership spans
    Data, Experiments, and frontend state.
 3. Inspect the existing app state/actions/effects, `FrontendClient`,
    `DemoCoordinator`, layouts, controls, virtual tables, and Phase 6 patterns.
@@ -34,7 +34,7 @@ thread.
 - Reject invalid source/range combinations, duplicate IDs, invalid intervals,
   invalid split/model/feature configurations, stale draft revisions, and
   mutable resubmission attempts at their owning boundaries.
-- Update `specs/api.md` only when a public/process contract changes; internal
+- Update `python_migration/specs/api.md` only when a public/process contract changes; internal
   demo contracts do not define future coordinator endpoints.
 
 ## Build deterministic Data behavior
@@ -50,7 +50,7 @@ thread.
   failure or cancellation.
 - Keep timestamp normalization, `(symbol, timestamp)` ordering, OHLC checks,
   finite prices, nonnegative volume, and correction-range rules consistent
-  with `specs/data-and-features.md`. Do not simulate future data to satisfy a
+  with `python_migration/specs/data-and-features.md`. Do not simulate future data to satisfy a
   visible range.
 - Run preparation, filtering, sorting, validation, delays, and autosave I/O
   on owned cancellable workers. Reuse the existing bounded effect runtime,
@@ -103,8 +103,8 @@ thread.
 - Run `$verify-corthena-data-and-experiments`; use
   `$verify-corthena-visualization-performance` if chart/table kernels,
   virtualization, or caches change.
-- Run `gofmt`, `go build ./...`, `go test ./...`, `go vet ./...`, Staticcheck,
-  applicable race tests, hidden smoke launches, and `govulncheck`.
+- Hand off to `$verify-corthena-data-and-experiments` and apply the focused
+  quality route; use `$python-windows-compat-gate` for dependency or native changes.
 - Update living specs for behavior or contract changes. Do not mark Phase 7
   complete while a Data/Experiments panel, deterministic scenario, autosave
   path, immutable submission path, validation case, or required quality gate

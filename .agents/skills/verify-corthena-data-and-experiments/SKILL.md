@@ -1,6 +1,6 @@
 ---
 name: verify-corthena-data-and-experiments
-description: Verify or add verification for Corthena roadmap Phase 7's simulated Data and Experiments workflows. Use when testing, auditing, profiling, or closing acceptance gaps in catalog/import behavior, dataset validation and revisions, experiment drafts, configuration validation, resource estimates, autosave, immutable submission, link synchronization, replay determinism, or Phase 7 golden images.
+description: "Verify Phase 7 Data and Experiments: imports, revisions, validation, drafts, estimates, autosave, submission, determinism, races, and goldens."
 ---
 
 # Verify Corthena Data and Experiments
@@ -11,9 +11,9 @@ future backend replacement.
 
 ## Ground verification
 
-1. Read `AGENTS.md`, Phase 7 in `specs/roadmap.md`,
-   `specs/frontend/workspaces.md`, `specs/frontend/foundation.md`,
-   `specs/data-and-features.md`, `specs/quality.md`, and `specs/api.md`.
+1. Read `python_migration/AGENTS.md`, `python_migration/specs/routing/phase-7.md`,
+   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
+   `python_migration/specs/data-and-features.md`, `python_migration/specs/quality.md`, and `python_migration/specs/api.md`.
 2. Inspect Data/Experiments state, actions/effects, client types, simulator,
    renderers, layout/link groups, persistence workers, virtual tables, and
    existing tests before selecting checks. Preserve unrelated changes.
@@ -35,7 +35,7 @@ future backend replacement.
   catalog revisions, submissions, and visible buffers.
 - Test cancellation before and during import, validation, estimation,
   autosave, and submission; test queue saturation, stale-generation rejection,
-  bounded draining, channel closure, and shutdown with the race detector.
+  bounded draining, queue closure, and shutdown with explicit lifecycle checks.
 
 ## Prove catalog and import correctness
 
@@ -84,9 +84,9 @@ future backend replacement.
 
 ## Conclude the gate
 
-- Run focused tests first, then `gofmt -l`, `go build ./...`, `go test ./...`,
-  `go vet ./...`, Staticcheck, applicable `go test -race`, hidden smoke
-  launches, and `govulncheck`.
+- Run focused tests, then applicable configured `ruff format --check`, `ruff check`,
+  `pyright`, `pytest`, `hypothesis`, `pytest-benchmark`, vulnerability scans, and hidden smoke
+  launches.
 - Report exact commands, scenario coverage, determinism evidence, atomicity
   and immutability cases, golden differences, skipped checks, and residual
   risks. Do not mark Phase 7 complete while any required workflow, scenario,

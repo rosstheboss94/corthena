@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Windows Compatibility Gate"
+  short_description: "Validate Python/Cython Windows compatibility"
+  default_prompt: "Use $python-windows-compat-gate to run the Corthena Windows compatibility gate and report blockers."
