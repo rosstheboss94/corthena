@@ -14,6 +14,7 @@ from corthena.frontend.native import (
     RaylibFrontendAdapter,
     UiThreadViolationError,
 )
+from corthena.frontend.phase5b import ChartAction, VisualizationView
 from corthena.frontend.shell import ShellView
 from corthena.frontend.state import UIAction, Workspace
 
@@ -54,6 +55,11 @@ class FakeNative:
         assert view.render_order
         if self.views is not None:
             self.views.append(view)
+        self.render_frame()
+        return ()
+
+    def render_visualization(self, view: VisualizationView) -> tuple[ChartAction, ...]:
+        assert view.frame.layers
         self.render_frame()
         return ()
 

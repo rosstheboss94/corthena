@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from corthena.frontend.docking import DockPosition, Split, TabStack, calculate_geometry
+from corthena.frontend.docking import Rect as DockRect
 from corthena.frontend.state import (
+    ActivateDockPanel,
     ActivatePanel,
     AppState,
     ContextField,
@@ -13,6 +16,7 @@ from corthena.frontend.state import (
     SelectWorkspace,
     UIAction,
     Workspace,
+    workspace_layout,
 )
 
 TOP_NAV_HEIGHT = 36
@@ -91,6 +95,41 @@ class DatasetRowView:
 
 
 @dataclass(frozen=True, slots=True)
+class DockTabView:
+    panel_id: str
+    title: str
+    bounds: Rect
+    active: bool
+    action: ActivateDockPanel
+
+
+@dataclass(frozen=True, slots=True)
+class DockStackView:
+    stack_id: str
+    bounds: Rect
+    header_bounds: Rect
+    body_bounds: Rect
+    tabs: tuple[DockTabView, ...]
+    active_panel_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class DockSplitterView:
+    split_id: str
+    bounds: Rect
+
+
+@dataclass(frozen=True, slots=True)
+class DockDropTargetView:
+    """One transient directional docking target and its resulting preview."""
+
+    position: DockPosition
+    bounds: Rect
+    preview_bounds: Rect
+    hot: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ShellView:
     """Complete immutable Go-compatible shell view for one frame."""
 
@@ -102,6 +141,11 @@ class ShellView:
     components: tuple[ComponentView, ...]
     datasets: tuple[DatasetRowView, ...]
     content_bounds: Rect
+    dock_stacks: tuple[DockStackView, ...]
+    dock_splitters: tuple[DockSplitterView, ...]
+    hidden_panel_ids: tuple[str, ...]
+    maximized_panel_id: str | None
+    layout_revision: int
     dataset_name: str
     dataset_id: str
     symbols: str
@@ -165,10 +209,13 @@ def project_shell(
         x += tab_width + 4 * scale
     top_height = (TOP_NAV_HEIGHT + CONTEXT_BAR_HEIGHT) * scale
     status_height = STATUS_BAR_HEIGHT * scale
-    active_panel_index = state.active_panel_index % len(_PANELS)
+    layout = workspace_layout(state)
+    visible = _visible_stacks(layout.root)
+    active_ids = frozenset(stack.active_panel_id for stack in visible)
+    flat_panels = tuple(panel for stack in visible for panel in stack.panels)
     panels = tuple(
-        PanelView(title, index == active_panel_index, ActivatePanel(index))
-        for index, title in enumerate(_PANELS)
+        PanelView(panel.title, panel.id in active_ids, ActivatePanel(index))
+        for index, panel in enumerate(flat_panels)
     )
     datasets = (
         ("US equities daily", "dataset-us-equities"),
@@ -179,6 +226,15 @@ def project_shell(
     dataset_name, dataset_id = datasets[state.dataset_context_revision % len(datasets)]
     symbols = symbols_options[state.symbols_context_revision % len(symbols_options)]
     interval = intervals[state.interval_context_revision % len(intervals)]
+    content_bounds = Rect(0, top_height, width, max(0, height - top_height - status_height))
+    left_width = 260 * scale if width >= 1100 * scale else 218 * scale
+    dock_host = Rect(
+        left_width + 9 * scale,
+        content_bounds.y + 8 * scale,
+        max(0, content_bounds.width - left_width - 17 * scale),
+        max(0, content_bounds.height - 16 * scale),
+    )
+    dock_stacks, dock_splitters = _project_docks(layout, dock_host, scale)
     return ShellView(
         viewport=Rect(0, 0, width, height),
         scale=scale,
@@ -194,7 +250,12 @@ def project_shell(
             DatasetRowView("US equities daily", "ready", "958328", "16", True),
             DatasetRowView("Index watchlist hourly", "validation", "219733", "7", False),
         ),
-        content_bounds=Rect(0, top_height, width, max(0, height - top_height - status_height)),
+        content_bounds=content_bounds,
+        dock_stacks=dock_stacks,
+        dock_splitters=dock_splitters,
+        hidden_panel_ids=tuple(panel.id for panel in layout.hidden),
+        maximized_panel_id=layout.maximized_panel_id,
+        layout_revision=layout.revision,
         dataset_name=dataset_name,
         dataset_id=dataset_id,
         symbols=symbols,
@@ -243,25 +304,149 @@ def action_at(view: ShellView, x: float, y: float) -> UIAction | None:
         )
         if _contains(bounds, x, y):
             return panel.action
-    content = view.content_bounds
-    host_x = left_width + 9 * scale
-    host_y = content.y + 8 * scale
-    host_width = content.width - left_width - 17 * scale
-    tab_right = host_x + host_width - 335 * scale
-    tab_width = min(
-        132 * scale, max(56 * scale, (tab_right - host_x - 3 * scale) / len(view.panels))
-    )
-    tab_x = host_x + 3 * scale
-    for panel in view.panels:
-        width = min(tab_width, max(0, tab_right - tab_x))
-        if _contains(Rect(tab_x, host_y + 3 * scale, width, 27 * scale), x, y):
-            return panel.action
-        tab_x += tab_width + scale
+    for stack in view.dock_stacks:
+        for tab in stack.tabs:
+            if _contains(tab.bounds, x, y):
+                for index, panel in enumerate(view.panels):
+                    if panel.title == tab.title:
+                        return ActivatePanel(index)
+                return tab.action
     return None
+
+
+def _visible_stacks(node: TabStack | Split) -> tuple[TabStack, ...]:
+    if isinstance(node, TabStack):
+        return (node,)
+    return (*_visible_stacks(node.first), *_visible_stacks(node.second))
+
+
+def _project_docks(
+    layout: object, host: Rect, scale: float
+) -> tuple[tuple[DockStackView, ...], tuple[DockSplitterView, ...]]:
+    from corthena.frontend.docking import WorkspaceLayout
+
+    if not isinstance(layout, WorkspaceLayout):
+        raise TypeError("layout must be a WorkspaceLayout")
+    geometry = calculate_geometry(
+        layout.root,
+        DockRect(host.x, host.y, host.width, host.height),
+        minimum_extent=120 * scale,
+    )
+    node_rects = dict(geometry.nodes)
+    stacks: list[DockStackView] = []
+    for stack in _visible_stacks(layout.root):
+        raw = node_rects[stack.id]
+        bounds = Rect(raw.x, raw.y, raw.width, raw.height)
+        header_height = min(PANEL_HEADER_HEIGHT * scale, bounds.height)
+        header = Rect(bounds.x, bounds.y, bounds.width, header_height)
+        body = Rect(
+            bounds.x + scale,
+            bounds.y + header_height,
+            max(0, bounds.width - 2 * scale),
+            max(0, bounds.height - header_height - scale),
+        )
+        tab_right = bounds.x + bounds.width - min(335 * scale, bounds.width * 0.34)
+        tab_width = max(
+            56 * scale,
+            min(132 * scale, (tab_right - bounds.x - 3 * scale) / len(stack.panels)),
+        )
+        tabs = tuple(
+            DockTabView(
+                panel.id,
+                panel.title,
+                Rect(
+                    bounds.x + 3 * scale + index * (tab_width + scale),
+                    bounds.y + 3 * scale,
+                    min(tab_width, bounds.width),
+                    max(0, header_height - 5 * scale),
+                ),
+                panel.id == stack.active_panel_id,
+                ActivateDockPanel(panel.id, layout.revision),
+            )
+            for index, panel in enumerate(stack.panels)
+        )
+        stacks.append(DockStackView(stack.id, bounds, header, body, tabs, stack.active_panel_id))
+    splitters = tuple(
+        DockSplitterView(split_id, Rect(rect.x, rect.y, rect.width, rect.height))
+        for split_id, rect in geometry.splitters
+    )
+    if layout.maximized_panel_id is not None:
+        stacks = [
+            DockStackView(
+                stack.stack_id,
+                host,
+                Rect(host.x, host.y, host.width, PANEL_HEADER_HEIGHT * scale),
+                Rect(
+                    host.x,
+                    host.y + PANEL_HEADER_HEIGHT * scale,
+                    host.width,
+                    max(0, host.height - PANEL_HEADER_HEIGHT * scale),
+                ),
+                stack.tabs,
+                stack.active_panel_id,
+            )
+            for stack in stacks
+            if any(tab.panel_id == layout.maximized_panel_id for tab in stack.tabs)
+        ]
+        splitters = ()
+    return tuple(stacks), splitters
 
 
 def _contains(bounds: Rect, x: float, y: float) -> bool:
     return bounds.x <= x <= bounds.x + bounds.width and bounds.y <= y <= bounds.y + bounds.height
+
+
+def project_dock_drop_targets(
+    stack: DockStackView, x: float, y: float, scale: float
+) -> tuple[DockDropTargetView, ...]:
+    """Project five snapped docking targets for a captured tab drag."""
+    size = max(32.0, round(40 * scale))
+    gap = max(4.0, round(6 * scale))
+    center_x = round(stack.bounds.x + stack.bounds.width / 2 - size / 2)
+    center_y = round(stack.bounds.y + stack.bounds.height / 2 - size / 2)
+    locations = (
+        (DockPosition.CENTER, center_x, center_y),
+        (DockPosition.LEFT, center_x - size - gap, center_y),
+        (DockPosition.RIGHT, center_x + size + gap, center_y),
+        (DockPosition.TOP, center_x, center_y - size - gap),
+        (DockPosition.BOTTOM, center_x, center_y + size + gap),
+    )
+    targets: list[DockDropTargetView] = []
+    for position, target_x, target_y in locations:
+        bounds = Rect(target_x, target_y, size, size)
+        match position:
+            case DockPosition.CENTER:
+                preview = stack.bounds
+            case DockPosition.LEFT:
+                preview = Rect(
+                    stack.bounds.x,
+                    stack.bounds.y,
+                    stack.bounds.width / 2,
+                    stack.bounds.height,
+                )
+            case DockPosition.RIGHT:
+                preview = Rect(
+                    stack.bounds.x + stack.bounds.width / 2,
+                    stack.bounds.y,
+                    stack.bounds.width / 2,
+                    stack.bounds.height,
+                )
+            case DockPosition.TOP:
+                preview = Rect(
+                    stack.bounds.x,
+                    stack.bounds.y,
+                    stack.bounds.width,
+                    stack.bounds.height / 2,
+                )
+            case DockPosition.BOTTOM:
+                preview = Rect(
+                    stack.bounds.x,
+                    stack.bounds.y + stack.bounds.height / 2,
+                    stack.bounds.width,
+                    stack.bounds.height / 2,
+                )
+        targets.append(DockDropTargetView(position, bounds, preview, _contains(bounds, x, y)))
+    return tuple(targets)
 
 
 __all__ = [
@@ -272,11 +457,16 @@ __all__ = [
     "TOP_NAV_HEIGHT",
     "ComponentView",
     "DatasetRowView",
+    "DockDropTargetView",
+    "DockSplitterView",
+    "DockStackView",
+    "DockTabView",
     "PanelView",
     "Rect",
     "ShellRegion",
     "ShellView",
     "WorkspaceTabView",
     "action_at",
+    "project_dock_drop_targets",
     "project_shell",
 ]

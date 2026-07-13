@@ -1,4 +1,4 @@
 interface:
   display_name: "Corthena Charts and Tables"
-  short_description: "Build deterministic charts and virtualized tables"
-  default_prompt: "Use $build-corthena-charts-and-tables to implement roadmap Phase 5 charts and tables."
+  short_description: "Build bounded Phase 5 charts and tables"
+  default_prompt: "Use $build-corthena-charts-and-tables to implement Corthena Phase 5 visualization infrastructure."

@@ -25,6 +25,7 @@ contains the default routing table.
 | [evaluation-and-inference.md](evaluation-and-inference.md) | Evaluation and inference specification index |
 | [api.md](api.md) | Coordinator contracts, Python client, DTOs, Arrow transfer, and event streaming |
 | [frontend/foundation.md](frontend/foundation.md) | Frontend foundation index; shell, effects, and persistence are split |
+| [frontend/raylib-visual-system.md](frontend/raylib-visual-system.md) | Raylib tokens, typography, geometry, states, responsive presentation, and visual governance |
 | [frontend/workspaces.md](frontend/workspaces.md) | Workspace index and shared rules; panels are split by workspace |
 | [frontend/visualization.md](frontend/visualization.md) | Charts, linked views, tables, and rendering performance |
 | [quality.md](quality.md) | Quality index; common, concurrency, and visualization gates are split |

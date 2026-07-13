@@ -1,7 +1,7 @@
 """Typed adapter containing all Phase 1 Raylib and Raygui values."""
 
 # pyright: reportAttributeAccessIssue=false, reportUnknownArgumentType=false
-# pyright: reportUnknownMemberType=false
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false
 
 from __future__ import annotations
 
@@ -12,9 +12,43 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from pyray import Font, Texture, Vector2
 
+    from corthena.frontend.phase5b import VisualizationView
+
 from corthena.frontend.assets import FrontendAssets
-from corthena.frontend.shell import ShellRegion, ShellView, action_at
+from corthena.frontend.controls import (
+    ControlEventKind,
+    ControlState,
+    FrameInput,
+    PointerBehavior,
+    Widget,
+    WidgetId,
+    route,
+)
+from corthena.frontend.docking import DockPosition
+from corthena.frontend.docking import Rect as ControlRect
+from corthena.frontend.phase5b import (
+    ChartAction,
+    InteractionKind,
+)
+from corthena.frontend.phase5b import (
+    Point as VisualizationPoint,
+)
+from corthena.frontend.phase5b import (
+    Rect as VisualizationRect,
+)
+from corthena.frontend.phase5b import (
+    Transform as VisualizationTransform,
+)
+from corthena.frontend.shell import (
+    DockDropTargetView,
+    ShellRegion,
+    ShellView,
+    action_at,
+    project_dock_drop_targets,
+)
 from corthena.frontend.state import (
+    DockPanel,
+    ResizeDockSplit,
     SetCommandPalette,
     SetSettingsOpen,
     SetUIScale,
@@ -41,6 +75,8 @@ class NativeFrontend(Protocol):
     def render_frame(self) -> None: ...
 
     def render_shell(self, view: ShellView) -> tuple[UIAction, ...]: ...
+
+    def render_visualization(self, view: VisualizationView) -> tuple[ChartAction, ...]: ...
 
     def capture_rgba(self) -> CapturedFrame: ...
 
@@ -97,6 +133,12 @@ class RaylibFrontendAdapter:
         self._mono_font: Font | None = None
         self._atlas: Texture | None = None
         self._command_index = 0
+        self._visualization_controls = ControlState()
+        self._visualization_drag_start: VisualizationPoint | None = None
+        self._visualization_selecting = False
+        self._dock_drag: tuple[str, float, float] | None = None
+        self._split_drag: str | None = None
+        self._dock_targets: tuple[DockDropTargetView, ...] = ()
 
     @property
     def owner_thread_id(self) -> int:
@@ -195,6 +237,7 @@ class RaylibFrontendAdapter:
                         self._draw_left_rail(view, rl)
                     case ShellRegion.CONTENT_HOST:
                         self._draw_data_host(view, rl)
+                        self._draw_dock_targets(rl)
                     case ShellRegion.STATUS_BAR:
                         self._draw_status_bar(view, rl)
                     case ShellRegion.TOAST_OVERLAY:
@@ -203,6 +246,123 @@ class RaylibFrontendAdapter:
                         self._draw_modal(view, rl)
         finally:
             rl.end_drawing()
+        return tuple(actions)
+
+    def render_visualization(self, view: VisualizationView) -> tuple[ChartAction, ...]:
+        """Render immutable generic chart/table primitives on the owner thread."""
+        self._assert_owner()
+        if not self._window_open or self._inter_font is None or self._mono_font is None:
+            raise RuntimeError("frontend visualization resources are not initialized")
+        import pyray as rl
+
+        from corthena.frontend.native_visualization import draw_visualization
+
+        actions = self._visualization_actions(view, rl)
+        draw_visualization(view, self._inter_font, self._mono_font)
+        return actions
+
+    def _visualization_actions(
+        self, view: VisualizationView, rl: object
+    ) -> tuple[ChartAction, ...]:
+        """Map pointer and keyboard input through the Phase 4 control router."""
+        bounds = view.chart_bounds
+        widget = Widget(
+            WidgetId.root("phase5-chart"),
+            ControlRect(bounds.min_x, bounds.min_y, bounds.width, bounds.height),
+            ControlRect(bounds.min_x, bounds.min_y, bounds.width, bounds.height),
+            PointerBehavior.DRAG,
+        )
+        mouse = VisualizationPoint(float(rl.get_mouse_x()), float(rl.get_mouse_y()))
+        routed = route(
+            self._visualization_controls,
+            FrameInput(
+                mouse.x,
+                mouse.y,
+                bool(rl.is_mouse_button_pressed(rl.MOUSE_BUTTON_LEFT)),
+                bool(rl.is_mouse_button_down(rl.MOUSE_BUTTON_LEFT)),
+                bool(rl.is_mouse_button_released(rl.MOUSE_BUTTON_LEFT)),
+                focus_next=bool(rl.is_key_pressed(rl.KEY_TAB)),
+                activate=bool(rl.is_key_pressed(rl.KEY_ENTER)),
+                cancel=bool(rl.is_key_pressed(rl.KEY_ESCAPE)),
+            ),
+            (widget,),
+        )
+        self._visualization_controls = routed.state
+        transform = VisualizationTransform(view.frame.data, bounds)
+        data_mouse = transform.inverse(
+            VisualizationPoint(
+                min(max(mouse.x, bounds.min_x), bounds.max_x),
+                min(max(mouse.y, bounds.min_y), bounds.max_y),
+            )
+        )
+        actions: list[ChartAction] = []
+        if bounds.contains(mouse):
+            actions.append(ChartAction(InteractionKind.CROSSHAIR, anchor=data_mouse))
+            wheel = float(rl.get_mouse_wheel_move())
+            if wheel:
+                actions.append(
+                    ChartAction(
+                        InteractionKind.ZOOM,
+                        anchor=data_mouse,
+                        factor=1.2 if wheel > 0 else 1 / 1.2,
+                    )
+                )
+        for event in routed.events:
+            if event.kind is ControlEventKind.PRESS:
+                self._visualization_drag_start = data_mouse
+                self._visualization_selecting = bool(
+                    rl.is_key_down(rl.KEY_LEFT_SHIFT) or rl.is_key_down(rl.KEY_RIGHT_SHIFT)
+                )
+            elif event.kind is ControlEventKind.DRAG and not self._visualization_selecting:
+                delta = rl.get_mouse_delta()
+                actions.append(
+                    ChartAction(
+                        InteractionKind.PAN,
+                        delta=VisualizationPoint(
+                            -float(delta.x) * view.frame.data.width / bounds.width,
+                            float(delta.y) * view.frame.data.height / bounds.height,
+                        ),
+                    )
+                )
+            elif event.kind is ControlEventKind.RELEASE:
+                start = self._visualization_drag_start
+                if (
+                    self._visualization_selecting
+                    and start is not None
+                    and start.x != data_mouse.x
+                    and start.y != data_mouse.y
+                ):
+                    actions.append(
+                        ChartAction(
+                            InteractionKind.SELECT,
+                            selection=VisualizationRect(
+                                min(start.x, data_mouse.x),
+                                min(start.y, data_mouse.y),
+                                max(start.x, data_mouse.x),
+                                max(start.y, data_mouse.y),
+                            ),
+                        )
+                    )
+                self._visualization_drag_start = None
+                self._visualization_selecting = False
+        step_x, step_y = view.frame.data.width * 0.05, view.frame.data.height * 0.05
+        key_actions = (
+            (rl.KEY_LEFT, VisualizationPoint(-step_x, 0)),
+            (rl.KEY_RIGHT, VisualizationPoint(step_x, 0)),
+            (rl.KEY_UP, VisualizationPoint(0, step_y)),
+            (rl.KEY_DOWN, VisualizationPoint(0, -step_y)),
+        )
+        actions.extend(
+            ChartAction(InteractionKind.KEYBOARD_PAN, delta=delta)
+            for key, delta in key_actions
+            if rl.is_key_pressed(key)
+        )
+        if rl.is_key_pressed(rl.KEY_R):
+            actions.append(ChartAction(InteractionKind.RESET))
+        if rl.is_key_pressed(rl.KEY_V):
+            actions.append(ChartAction(InteractionKind.TOGGLE_VISIBILITY, series_id="predictions"))
+        if rl.is_key_pressed(rl.KEY_L):
+            actions.append(ChartAction(InteractionKind.LINK_AXIS, linked_axis=view.frame.data))
         return tuple(actions)
 
     def _shell_actions(self, view: ShellView, rl: object) -> list[UIAction]:
@@ -236,15 +396,42 @@ class RaylibFrontendAdapter:
             ) and self._command_index < len(view.tabs):
                 actions.extend((view.tabs[self._command_index].action, SetCommandPalette(False)))
         if rl.is_key_pressed(rl.KEY_ESCAPE):
+            self._dock_drag = None
+            self._split_drag = None
             if view.command_palette_open:
                 actions.append(SetCommandPalette(False))
             if view.settings_open:
                 actions.append(SetSettingsOpen(False))
+        mouse_x = float(rl.get_mouse_x())
+        mouse_y = float(rl.get_mouse_y())
+        self._dock_targets = ()
+        if self._dock_drag is not None:
+            _, start_x, start_y = self._dock_drag
+            if (mouse_x - start_x) ** 2 + (mouse_y - start_y) ** 2 >= 36:
+                target_stack = next(
+                    (
+                        stack
+                        for stack in reversed(view.dock_stacks)
+                        if self._inside(stack.bounds, mouse_x, mouse_y)
+                    ),
+                    None,
+                )
+                if target_stack is not None:
+                    self._dock_targets = project_dock_drop_targets(
+                        target_stack, mouse_x, mouse_y, view.scale
+                    )
         if rl.is_mouse_button_pressed(rl.MOUSE_BUTTON_LEFT):
-            mouse_x = float(rl.get_mouse_x())
-            mouse_y = float(rl.get_mouse_y())
             if view.critical_error:
                 return actions
+            for splitter in view.dock_splitters:
+                if self._inside(splitter.bounds, mouse_x, mouse_y):
+                    self._split_drag = splitter.split_id
+                    return actions
+            for stack in view.dock_stacks:
+                for tab in stack.tabs:
+                    if self._inside(tab.bounds, mouse_x, mouse_y):
+                        self._dock_drag = (tab.panel_id, mouse_x, mouse_y)
+                        break
             if view.settings_open:
                 actions.extend(self.settings_click_actions(view, mouse_x, mouse_y))
                 return actions
@@ -268,7 +455,102 @@ class RaylibFrontendAdapter:
                 and 4 * scale <= mouse_y <= 32 * scale
             ):
                 actions.append(SetCommandPalette(True))
+        if self._split_drag is not None and rl.is_mouse_button_down(rl.MOUSE_BUTTON_LEFT):
+            ratio = min(0.95, max(0.05, mouse_x / max(1.0, view.viewport.width)))
+            actions.append(ResizeDockSplit(self._split_drag, ratio, view.layout_revision))
+        if rl.is_mouse_button_released(rl.MOUSE_BUTTON_LEFT):
+            self._split_drag = None
+            if self._dock_drag is not None:
+                panel_id, start_x, start_y = self._dock_drag
+                self._dock_drag = None
+                if (mouse_x - start_x) ** 2 + (mouse_y - start_y) ** 2 >= 36:
+                    target = next(
+                        (
+                            stack
+                            for stack in reversed(view.dock_stacks)
+                            if self._inside(stack.bounds, mouse_x, mouse_y)
+                        ),
+                        None,
+                    )
+                    hot = next((item for item in self._dock_targets if item.hot), None)
+                    if target is not None and hot is not None:
+                        position = hot.position
+                        token = f"r{view.layout_revision + 1}-{panel_id}"
+                        actions.append(
+                            DockPanel(
+                                panel_id,
+                                target.stack_id,
+                                position,
+                                f"split-{token}",
+                                f"stack-{token}",
+                                view.layout_revision,
+                            )
+                        )
+                self._dock_targets = ()
         return actions
+
+    def _draw_dock_targets(self, rl: object) -> None:
+        hot = next((target for target in self._dock_targets if target.hot), None)
+        if hot is not None:
+            self._rect(
+                rl,
+                hot.preview_bounds.x,
+                hot.preview_bounds.y,
+                hot.preview_bounds.width,
+                hot.preview_bounds.height,
+                (60, 200, 200, 42),
+            )
+            self._outline(
+                rl,
+                hot.preview_bounds.x,
+                hot.preview_bounds.y,
+                hot.preview_bounds.width,
+                hot.preview_bounds.height,
+                (60, 200, 200, 220),
+            )
+        for target in self._dock_targets:
+            fill = (60, 200, 200, 235) if target.hot else (23, 28, 34, 235)
+            edge = (214, 220, 229, 255) if target.hot else (60, 200, 200, 220)
+            self._rect(
+                rl,
+                target.bounds.x,
+                target.bounds.y,
+                target.bounds.width,
+                target.bounds.height,
+                fill,
+            )
+            self._outline(
+                rl,
+                target.bounds.x,
+                target.bounds.y,
+                target.bounds.width,
+                target.bounds.height,
+                edge,
+            )
+            inset = target.bounds.width * 0.27
+            marker_x = target.bounds.x + inset
+            marker_y = target.bounds.y + inset
+            marker_w = target.bounds.width - 2 * inset
+            marker_h = target.bounds.height - 2 * inset
+            if target.position is DockPosition.LEFT:
+                marker_w /= 2
+            elif target.position is DockPosition.RIGHT:
+                marker_x += marker_w / 2
+                marker_w /= 2
+            elif target.position is DockPosition.TOP:
+                marker_h /= 2
+            elif target.position is DockPosition.BOTTOM:
+                marker_y += marker_h / 2
+                marker_h /= 2
+            self._rect(rl, marker_x, marker_y, marker_w, marker_h, edge)
+
+    @staticmethod
+    def _inside(bounds: object, x: float, y: float) -> bool:
+        return bool(
+            hasattr(bounds, "x")
+            and bounds.x <= x <= bounds.x + bounds.width
+            and bounds.y <= y <= bounds.y + bounds.height
+        )
 
     def settings_click_actions(self, view: ShellView, x: float, y: float) -> list[UIAction]:
         """Map a Settings-overlay click to closed actions."""
@@ -489,9 +771,6 @@ class RaylibFrontendAdapter:
         scale = view.scale
         content = view.content_bounds
         left_width = 260 * scale if content.width >= 1100 * scale else 218 * scale
-        host_x, host_y = left_width + 9 * scale, content.y + 8 * scale
-        host_w = content.width - left_width - 17 * scale
-        host_h = content.height - 16 * scale
         self._rect(
             rl,
             left_width + scale,
@@ -500,82 +779,104 @@ class RaylibFrontendAdapter:
             content.height,
             (11, 13, 16, 255),
         )
-        self._rect(rl, host_x, host_y, host_w, host_h, (17, 21, 26, 255))
-        self._outline(rl, host_x, host_y, host_w, host_h, (37, 43, 51, 255))
-        self._rect(rl, host_x, host_y, host_w, 32 * scale, (23, 28, 34, 255))
-        self._line(
-            rl, host_x, host_y + 31 * scale, host_x + host_w, host_y + 31 * scale, (37, 43, 51, 255)
-        )
-        tab_right = host_x + host_w - 335 * scale
-        tab_width = min(
-            132 * scale, max(56 * scale, (tab_right - host_x - 3 * scale) / len(view.panels))
-        )
-        x = host_x + 3 * scale
-        for panel in view.panels:
-            width = min(tab_width, max(0, tab_right - x))
+        for stack in view.dock_stacks:
+            bounds, header, body = stack.bounds, stack.header_bounds, stack.body_bounds
+            self._rect(rl, bounds.x, bounds.y, bounds.width, bounds.height, (17, 21, 26, 255))
+            self._outline(rl, bounds.x, bounds.y, bounds.width, bounds.height, (37, 43, 51, 255))
+            self._rect(rl, header.x, header.y, header.width, header.height, (23, 28, 34, 255))
+            self._line(
+                rl,
+                header.x,
+                header.y + header.height - scale,
+                header.x + header.width,
+                header.y + header.height - scale,
+                (37, 43, 51, 255),
+            )
+            for tab in stack.tabs:
+                self._rect(
+                    rl,
+                    tab.bounds.x,
+                    tab.bounds.y,
+                    tab.bounds.width,
+                    tab.bounds.height,
+                    (11, 13, 16, 255) if tab.active else (17, 21, 26, 255),
+                )
+                if tab.active:
+                    self._rect(
+                        rl,
+                        tab.bounds.x,
+                        tab.bounds.y + tab.bounds.height - 2 * scale,
+                        tab.bounds.width,
+                        2 * scale,
+                        (60, 200, 200, 255),
+                    )
+                self._text(
+                    rl,
+                    self._inter_font,
+                    tab.title,
+                    tab.bounds.x + 7 * scale,
+                    tab.bounds.y + 8 * scale,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+            self._dock_header_buttons(rl, header.x, header.y, header.width, scale)
+            self._draw_stack_body(rl, view, stack, body, scale)
+        for splitter in view.dock_splitters:
             self._rect(
                 rl,
-                x,
-                host_y + 3 * scale,
-                width,
-                27 * scale,
-                (11, 13, 16, 255) if panel.selected else (17, 21, 26, 255),
+                splitter.bounds.x,
+                splitter.bounds.y,
+                splitter.bounds.width,
+                splitter.bounds.height,
+                (37, 43, 51, 255),
             )
-            if panel.selected:
-                self._rect(rl, x, host_y + 28 * scale, width, 2 * scale, (60, 200, 200, 255))
+
+    def _draw_stack_body(
+        self, rl: object, view: ShellView, stack: object, body: object, scale: float
+    ) -> None:
+        selected_panel = next(tab for tab in stack.tabs if tab.active)
+        body_x, body_y, body_w, body_h = body.x, body.y, body.width, body.height
+        rl.begin_scissor_mode(round(body_x), round(body_y), round(body_w), round(body_h))
+        try:
             self._text(
                 rl,
                 self._inter_font,
-                panel.title,
-                x + 7 * scale,
-                host_y + 8 * scale,
-                10,
+                selected_panel.title,
+                body_x + 14 * scale,
+                body_y + 12 * scale,
+                16,
                 scale,
                 (214, 220, 229, 255),
             )
-            x += tab_width + scale
-        self._dock_header_buttons(rl, host_x, host_y, host_w, scale)
-        body_x, body_y = host_x + scale, host_y + 32 * scale
-        body_w, body_h = host_w - 2 * scale, host_h - 33 * scale
-        selected_panel = next(panel for panel in view.panels if panel.selected)
-        self._text(
-            rl,
-            self._inter_font,
-            selected_panel.title,
-            body_x + 14 * scale,
-            body_y + 12 * scale,
-            16,
-            scale,
-            (214, 220, 229, 255),
-        )
-        self._text(
-            rl,
-            self._inter_font,
-            "Deterministic demo data",
-            body_x + 14 * scale,
-            body_y + 34 * scale,
-            11,
-            scale,
-            (126, 136, 150, 255),
-        )
-        data_x, data_y = body_x + 14 * scale, body_y + 58 * scale
-        data_w, data_h = body_w - 28 * scale, body_h - 72 * scale
-        if view.panels[0].selected:
-            self._draw_catalog(rl, view, data_x, data_y, data_w, data_h, scale)
-        else:
-            self._outline(rl, data_x, data_y, data_w, data_h, (37, 43, 51, 255))
             self._text(
                 rl,
                 self._inter_font,
-                view.panels[
-                    next(index for index, item in enumerate(view.panels) if item.selected)
-                ].title,
-                data_x + 16 * scale,
-                data_y + 16 * scale,
-                12,
+                "Deterministic demo data",
+                body_x + 14 * scale,
+                body_y + 34 * scale,
+                11,
                 scale,
                 (126, 136, 150, 255),
             )
+            data_x, data_y = body_x + 14 * scale, body_y + 58 * scale
+            data_w, data_h = body_w - 28 * scale, body_h - 72 * scale
+            if selected_panel.title == "Catalog":
+                self._draw_catalog(rl, view, data_x, data_y, data_w, data_h, scale)
+            else:
+                self._outline(rl, data_x, data_y, data_w, data_h, (37, 43, 51, 255))
+                self._text(
+                    rl,
+                    self._inter_font,
+                    selected_panel.title,
+                    data_x + 16 * scale,
+                    data_y + 16 * scale,
+                    12,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+        finally:
+            rl.end_scissor_mode()
 
     def _draw_catalog(
         self,

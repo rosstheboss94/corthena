@@ -1,4 +1,4 @@
 interface:
   display_name: "Corthena Visualization Verification"
-  short_description: "Verify visualization correctness and performance"
-  default_prompt: "Use $verify-corthena-visualization-performance to validate Phase 5 visualization behavior and performance."
+  short_description: "Verify Phase 5 visualization and performance"
+  default_prompt: "Use $verify-corthena-visualization-performance to audit Corthena Phase 5 charts and tables."

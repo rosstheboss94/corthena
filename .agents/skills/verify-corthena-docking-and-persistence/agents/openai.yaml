@@ -1,0 +1,4 @@
+interface:
+  display_name: "Corthena Docking and Persistence Verifier"
+  short_description: "Verify Phase 4 docking and persistence behavior"
+  default_prompt: "Use $verify-corthena-docking-and-persistence to verify Phase 4 docking, controls, persistence, replay, recovery, and visual parity."

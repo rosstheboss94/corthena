@@ -15,9 +15,10 @@ specifications; `specs/routing/phase-*.md` provides compact reading routes and
 | 1 | [Strict Raylib frontend scaffold](routing/phase-1.md) | Complete; the packaged assets, typed adapter, UI-thread checks, bounded native smoke launch, cleanup tests, and configured gates pass. |
 | 2 | [Typed frontend architecture and simulator](routing/phase-2.md) | Complete; typed immutable state, closed actions/effects, deterministic simulation, bounded workers, replay, cancellation, saturation, and lifecycle evidence pass. |
 | 3 | [Application shell](routing/phase-3.md) | Complete; the Go-equivalent Raylib shell, typed interactions, bounded lifecycle, raw-RGBA capture, and manifest-owned PNG parity pass. |
-| 4 | Docking, controls, settings, responsive persistence | Pending; implement typed layouts, preferences, recovery, replay, and scale behavior. |
-| 5 | Charts and tables | Pending; implement transforms, LOD, cache, cancellation, virtualization, benchmarks, and golden scenarios. |
-| 6 | Research vertical slice | Pending; implement linked panels, deterministic scenarios, leakage checks, replay, benchmarks, and the 36-image matrix. |
+| 4 | [Docking, controls, settings, responsive persistence](routing/phase-4.md) | Complete by user acceptance; live immutable workspace docking, directional drop targets and previews, splitter interaction, revisioned persistence, responsive geometry, automated quality gates, and manual docking validation pass. A revised split-layout golden remains follow-up evidence. |
+| 5 | [Charts and tables foundation](routing/phase-5.md) | Complete; accepted typed numerical kernels, clipping, LOD, virtualization, bounded generation-safe cache/workers, immutable publication, lifecycle checks, proportional-work evidence, and benchmarks are delivered. |
+| 5b | [Visualization acceptance and visual parity](routing/phase-5b.md) | Complete; generic Raylib layers and typed interactions, bounded cross-scope request and pagination-worker parity, the reviewed six-case legacy Go golden family, exact Python decoded-RGBA comparisons, Windows/build gates, and final audits pass. |
+| 6 | Research vertical slice | Pending; Phase 5b prerequisite is satisfied. Implement linked panels, deterministic scenarios, leakage checks, replay, benchmarks, and the 36-image matrix. |
 | 7 | Data and Experiments | Pending; implement catalog/import, validation, estimates, autosave, immutable submission, benchmarks, and the 60-image matrix. |
 | 8 | Jobs and Results | Pending; implement the virtual queue, lifecycle controls, checkpoints, immutable comparisons, charts, stale-generation behavior, and the 60-image matrix. |
 | 9 | Models and Inference | Pending; implement the immutable registry, transactional aliases, artifact provenance/tree validation, compatibility-gated scoring, rankings, distributions, history, export, cancellation, and the 66-image golden matrix. |
@@ -119,6 +120,91 @@ ported, including typed Settings, command-palette, scale, context, and
 panel-selection actions. Docking mutation algorithms, reusable controls,
 persisted preferences, responsive layout policy, and layout persistence and
 recovery remain Phase 4.
+
+## Phase 4 route and done condition
+
+Use the [Phase 4 task route](routing/phase-4.md) with these required skills, in
+order:
+
+1. `$build-corthena-docking-and-persistence`
+2. `$build-corthena-raylib-visual-system`
+3. `$python-best-practices`
+4. `$verify-corthena-docking-and-persistence`
+5. `$verify-corthena-raylib-visual-system`
+6. `$python-windows-compat-gate`
+7. `$review-corthena-code`
+
+Phase 4 is complete only when immutable typed dock trees support pure,
+deterministic activation, reordering, movement, splitting/docking,
+close/reopen, maximize/restore, and resizing while preserving stable IDs,
+hidden-panel state, valid split collapse, ratio-based layouts, minimum extents,
+and deterministic replay. Reusable controls must provide hierarchical IDs and
+deterministic pointer, keyboard, focus, capture, clipping, and cancellation
+behavior through shared visual primitives. Responsive evidence must cover
+1280x720 and 1920x1080 at every applicable scale preset with live DPI times
+preset scaling applied once.
+
+Preferences and named layouts must remain separate versioned documents with
+strict validation, atomic replacement, bounded and coalesced background saves,
+stale-result rejection, corruption quarantine, fallback defaults, recovery,
+migration, cancellation, and leak-free shutdown. Filesystem I/O remains off the
+UI thread. Every applicable common, concurrency, visualization, Windows, and
+project quality gate and manifest-owned PNG parity against
+`phase4_dockable_data.png` must pass. Phase 4 remains Pending until all runtime
+implementation and evidence exist, and excludes Phase 5 charts/tables and all
+later domain workflows.
+
+## Phase 5 route and completed foundation
+
+Use the [Phase 5 task route](routing/phase-5.md) with these required skills, in
+order:
+
+1. `$build-corthena-charts-and-tables`
+2. `$build-corthena-raylib-visual-system`
+3. `$python-best-practices`
+4. `$verify-corthena-visualization-performance`
+5. `$verify-corthena-raylib-visual-system`
+6. `$python-windows-compat-gate`
+7. `$review-corthena-code`
+
+Phase 5 is complete because the accepted foundation provides deterministic
+typed `float64` transforms, inverse transforms, clipping, ticks, checked final
+draw conversion, OHLCV-preserving and continuous-series LOD, row and column
+virtualization, deterministic typed sort/filter/null behavior, stable row-ID
+selection, a byte-bounded generation-safe LRU, bounded cancellable preparation
+workers, immutable publication, and proportional-work instrumentation.
+
+Hand-calculated, property, race, lifecycle, work-count, and benchmark evidence
+covers the foundation's numerical boundaries, OHLCV and continuous-series
+semantics, cache accounting and eviction, bounded worker saturation,
+cancellation and stale generations, table windows and stable selection, and
+leak-free shutdown. Full generic Raylib layer rendering and interaction wiring,
+cross-scope request deduplication, pagination-worker parity, canonical golden
+creation/comparison, and final acceptance audits are not Phase 5 completion
+requirements; they are owned by Phase 5b.
+
+## Phase 5b route and done condition
+
+Use the [Phase 5b task route](routing/phase-5b.md) with its required skills in
+the recorded order. Phase 5b is complete only when every generic visualization
+layer is prepared and rendered through shared Raylib primitives; every required
+pointer and keyboard interaction is routed through immutable typed state and
+Phase 4 controls; cross-scope visualization requests and typed pagination
+requests have independent watcher, deduplication, generation, cancellation,
+saturation, stale-result, immutable-publication, and bounded-shutdown parity;
+and paint, clip, hit-test, and capture rectangles are identical.
+
+Legacy Go must supply the reviewed `phase5-golden` manifest and six lossless PNG
+baselines at 1280x720 and 1920x1080 for 100%, 150%, and 200% scale. Python
+captures must compare decoded RGBA against those exact baselines with channel
+tolerance `3` and maximum differing-pixel ratio `0.002`. Every required layer,
+interaction, replay, race, lifecycle, bounded-work, golden, common,
+concurrency, visualization, Windows, formatting, linting, typing, test,
+property, benchmark, vulnerability, Cython build/import, and finding-free final
+review requirement must pass. Missing implementation, baseline, comparison, or
+audit evidence keeps Phase 5b Pending and Phase 6 blocked. Phase 5b excludes
+Research-specific queries, fixtures, linked-workspace behavior, and Phase 7+
+domain workflows.
 
 ## Global acceptance
 

@@ -53,6 +53,9 @@ boundaries. Update the owning spec when behavior or a public contract changes.
 | Dependencies, packaging, or tooling | `specs/technology-stack.md`, `specs/quality.md` |
 | Python/Cython migration | `specs/python-migration.md`, `specs/migration-baseline.md`, `specs/technology-stack.md`, `specs/roadmap.md` |
 | Phase 12 Python scaffold and shell | `specs/routing/phase-12.md` |
+| Phase 4 docking, reusable controls, preferences, responsive scaling, and layout persistence | `specs/routing/phase-4.md` |
+| Phase 5 charts, tables, LOD, visualization caches, virtualization, and performance | `specs/routing/phase-5.md` |
+| Phase 5b visualization rendering, interactions, request/pagination parity, and canonical goldens | `specs/routing/phase-5b.md` |
 | Processes, storage, runtime, concurrency | `specs/concurrency-and-parallelism.md`, `specs/system-architecture.md`; read `specs/decisions/0008-regular-cpython-concurrency.md` for decision rationale |
 | Imports, datasets, features, targets | `specs/data-and-features.md` |
 | Trees, forests, boosting, model artifacts | `specs/models.md`, `specs/decisions/0002-python-library-estimators-and-artifacts.md` |
@@ -60,6 +63,7 @@ boundaries. Update the owning spec when behavior or a public contract changes.
 | Evaluation, backtests, registry, inference | `specs/evaluation-and-inference.md` |
 | Coordinator, DTOs, health, event streaming | `specs/api.md` plus the owning domain spec |
 | Raylib shell, state, docking, styling | `specs/frontend/foundation.md` |
+| Raylib visual design, styling, geometry, typography, interaction states, or responsive presentation | `specs/frontend/raylib-visual-system.md`, `specs/frontend/foundation.md`, plus the owning shell, workspace, or visualization spec |
 | Workspace or panel behavior | `specs/frontend/workspaces.md`, `specs/frontend/foundation.md` |
 | Charts, tables, linked views | `specs/frontend/visualization.md`, `specs/frontend/foundation.md` |
 | Implementation, review, tests, typing, or performance | `specs/quality.md`, `specs/concurrency-and-parallelism.md` when concurrent or parallel work is involved, plus the owning subsystem spec |

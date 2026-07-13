@@ -1,78 +1,70 @@
 ---
 name: build-corthena-charts-and-tables
-description: Build Phase 5 first-party charts, LOD, bounded visualization caches, generation-safe requests, and virtualized tables.
+description: Build Corthena Phase 5 first-party chart and table infrastructure, including typed transforms, clipping, layers, LOD, interactions, bounded visualization caches and workers, generation safety, virtualization, benchmarks, and generic Raylib golden scenarios. Use for Phase 5 visualization primitives; do not use for Phase 6 Research workflow behavior or later domain workflows.
 ---
 
 # Build Corthena Charts and Tables
 
-Implement visualization components without moving numerical work onto the UI
-thread, leaking Raylib values, or making work proportional to source row count.
+## Ground the implementation
 
-## Ground the change
+1. Read `python_migration/AGENTS.md` and every required document in
+   `python_migration/specs/routing/phase-5.md` before editing.
+2. Treat the living specifications, legacy Go chart/table implementation, and
+   manifest-owned `phase5-golden` matrix as canonical. Update an owning
+   specification first when behavior or a public contract changes.
+3. Inspect the completed Phase 1-4 lifecycle, state/effects, docking, controls,
+   persistence, visual-system, and native-adapter boundaries. Preserve them.
 
-1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
-   `python_migration/specs/frontend/visualization.md`,
-   `python_migration/specs/frontend/foundation.md`, and
-   `python_migration/specs/quality.md`.
-2. Read `python_migration/specs/technology-stack.md` for dependencies or native adapter work.
-3. Read `python_migration/specs/frontend/workspaces.md` only when panel workflow behavior is in
-   scope. Read `python_migration/specs/api.md` only for client or Arrow request changes.
-4. Inspect existing docking, controls, app state, effects, and native UI package
-   boundaries before creating packages. Preserve unrelated workspace changes.
+## Build pure visualization kernels
 
-## Keep visualization kernels pure
+- Keep transforms, inverse transforms, clipping, ticks, LOD, virtualization,
+  sorting, filtering, pagination, and selection in typed pure Python without
+  Raylib imports. Retain `float64` until checked final draw conversion.
+- Reject non-finite, degenerate, or out-of-range inputs before publication.
+  Publish immutable render-ready values with stable source-index tie-breaking
+  and deterministic output independent of completion order.
+- Implement every generic layer owned by `frontend/visualization.md`. Keep
+  Research queries, fixtures, features, targets, and workflow state out.
 
-- Keep transforms, clipping, tick selection, LOD aggregation, virtualization,
-  sorting, and selection in pure Python modules with no Raylib imports.
-- Retain `float64` through transforms and aggregation. Reject non-finite or
-  out-of-range coordinates before checked conversion to final `float32` draw
-  values.
-- Define typed immutable inputs and render-ready outputs. Do not expose Arrow
-  builders, native vectors, pointers, `any`, or weak maps.
-- Preserve stable source-index tie-breaking and deterministic output order.
-- Keep panel/domain behavior out of draw functions; render functions consume
-  prepared buffers and emit typed actions only.
+## Bound charts, workers, and caches
 
-## Build charts
+- Preserve OHLCV semantics in candle buckets and stable first, last, minimum,
+  and maximum samples in continuous LOD. Instrument work counts and keep final
+  preparation proportional to viewport width after source-range selection.
+- Route pan, zoom, box selection, crosshair, typed tooltip, visibility,
+  reset-to-fit, keyboard, and generic linked-axis actions through typed state
+  and Phase 4 controls.
+- Keep decoding and preparation on owned bounded workers. Define queue
+  capacities, saturation, deduplication, cancellation, generation ordering,
+  stale-result rejection, failure reporting, and bounded shutdown.
+- Use a byte-bounded deterministic LRU with complete owned-buffer accounting.
+  Never mutate or evict data still published to a frame.
 
-- Support the layers owned by the visualization spec: candlestick and volume,
-  line and area, histogram and scatter, equity and drawdown, heatmap, feature
-  importance, predictions, trades, and train/validation/test regions.
-- Implement pointer pan, wheel zoom, box selection, crosshair, typed tooltip,
-  series visibility, reset-to-fit, and linked symbol/range propagation through
-  existing control and link-group state.
-- Bucket dense data by horizontal pixel range. Preserve OHLC semantics for
-  candles and first, last, minimum, and maximum samples for continuous series.
-- Bound render work by viewport width after LOD, not source rows.
+## Virtualize tables
 
-## Build asynchronous data and caches
+- Compute row and column windows from the final viewport and scroll state.
+  Measure and render only visible cells plus bounded overscan.
+- Preserve stable row-ID selection across sorting, filtering, pagination,
+  insertion, removal, and update. Define typed deterministic null ordering.
+- Support resizable headers, pinned identifier columns, keyboard and pointer
+  selection, and bounded copy output without work proportional to total rows.
 
-- Perform Arrow decode, LOD, sorting, filtering, and request preparation on
-  owned background workers with explicit cancellation and bounded queues.
-- Tag requests and results with monotonically ordered generation tokens. Drop
-  stale results before they enter visible state.
-- Deduplicate equivalent requests and use a byte-bounded LRU whose accounting
-  includes owned buffers. Never evict or mutate data still published to a frame.
-- Make backpressure explicit and keep UI-thread sends nonblocking.
+## Preserve visual and phase boundaries
 
-## Build virtualized tables
+- Use `$build-corthena-raylib-visual-system` for tokens, chart/table primitives,
+  interaction states, clipping, scaling, and draw order.
+- Keep Raylib/Raygui on the locked UI thread and all I/O, decoding, sorting,
+  filtering, LOD, and blocking work off it. Emit only typed actions.
+- Exclude Phase 6+ workflows, real coordinator/network/repository behavior,
+  new dependencies without approval, and Cython without measured evidence.
 
-- Compute visible row and column windows from scroll offsets and viewport size.
-  Measure and render only those cells plus a bounded overscan.
-- Preserve stable row IDs across sorting, filtering, pagination, and updates;
-  selection follows IDs rather than visible indexes.
-- Implement typed deterministic sort/null behavior, resizable headers, pinned
-  identifier columns, keyboard and pointer selection, and bounded copy output.
-- Keep server-side filter and pagination requests cancellable and generation
-  safe.
+## Test and hand off
 
-## Verify before handoff
-
-- Add hand-calculated transform, clipping, LOD, interaction, stable-ID,
-  virtualization, cache, cancellation, and stale-generation tests.
-- Run the owning tests and `$verify-corthena-visualization-performance`.
-- Hand off to `$verify-corthena-visualization-performance` and apply the
-  focused quality route; use `$python-windows-compat-gate` for native adapter,
-  dependency, toolchain, or application-shell changes.
-- Update living specifications for behavior changes. Mark Phase 5 complete only
-  when every done condition and required gate passes.
+- Add hand-calculated, property, replay, cache, race, cancellation, stale-result,
+  virtualization, work-count, benchmark, and repeated-lifecycle tests.
+- Capture the exact six-case `phase5-golden` matrix and compare decoded RGBA
+  using manifest-owned inputs and unchanged tolerances.
+- Hand off in the route's required order to
+  `$verify-corthena-visualization-performance`,
+  `$verify-corthena-raylib-visual-system`, `$python-windows-compat-gate`, and
+  `$review-corthena-code`. Keep Phase 5 Pending until all evidence passes.

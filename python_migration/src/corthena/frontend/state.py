@@ -2,10 +2,28 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
 from typing import assert_never
+
+from corthena.frontend.docking import (
+    DockPosition,
+    Panel,
+    TabStack,
+    WorkspaceLayout,
+    activate,
+    close,
+    dock,
+    maximize,
+    move,
+    reopen,
+    reorder,
+    resize,
+    restore,
+    set_link_group,
+)
 
 
 class LoadState(StrEnum):
@@ -36,6 +54,33 @@ class ContextField(StrEnum):
     DATASET = "dataset"
     SYMBOLS = "symbols"
     INTERVAL = "interval"
+
+
+class PersistenceState(StrEnum):
+    """Typed status of asynchronous preference/layout persistence."""
+
+    IDLE = "idle"
+    LOADING = "loading"
+    SAVING = "saving"
+    READY = "ready"
+    FAILED = "failed"
+
+
+def _default_workspace_layouts() -> tuple[tuple[Workspace, WorkspaceLayout], ...]:
+    titles = ("Catalog", "Coverage", "Import Queue", "Dataset", "Import Logs")
+    values: list[tuple[Workspace, WorkspaceLayout]] = []
+    for workspace in Workspace:
+        panels = tuple(
+            Panel(f"{workspace.value}-{index}", title.lower().replace(" ", "-"), title)
+            for index, title in enumerate(titles)
+        )
+        values.append(
+            (
+                workspace,
+                WorkspaceLayout(0, TabStack(f"{workspace.value}-stack-root", panels, panels[0].id)),
+            )
+        )
+    return tuple(values)
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -88,7 +133,14 @@ class AppState:
     dataset_context_revision: int = 0
     symbols_context_revision: int = 0
     interval_context_revision: int = 0
+    # Compatibility projection only; workspace_layouts is the layout authority.
     active_panel_index: int = 0
+    workspace_layouts: tuple[tuple[Workspace, WorkspaceLayout], ...] = field(
+        default_factory=_default_workspace_layouts
+    )
+    active_layout_name: str = "default"
+    preferences_revision: int = 0
+    persistence_state: PersistenceState = PersistenceState.IDLE
     toasts: tuple[str, ...] = ()
     critical_error: str | None = None
 
@@ -100,8 +152,16 @@ class AppState:
             self.symbols_context_revision,
             self.interval_context_revision,
         )
-        if min(revisions) < 0 or self.active_panel_index < 0:
+        if min(revisions) < 0 or self.preferences_revision < 0 or self.active_panel_index < 0:
             raise ValueError("shell indexes must be non-negative")
+        workspaces = tuple(workspace for workspace, _ in self.workspace_layouts)
+        if len(workspaces) != len(Workspace) or frozenset(workspaces) != frozenset(Workspace):
+            raise ValueError("workspace layouts must contain each workspace exactly once")
+        if (
+            not self.active_layout_name
+            or self.active_layout_name.strip() != self.active_layout_name
+        ):
+            raise ValueError("active layout name must be valid")
         if any(not message for message in self.toasts):
             raise ValueError("toast messages must be non-empty")
         if self.critical_error == "":
@@ -212,6 +272,83 @@ class ActivatePanel:
             raise ValueError("panel_index must be non-negative")
 
 
+@dataclass(frozen=True, slots=True)
+class ActivateDockPanel:
+    panel_id: str
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class ReorderDockPanel:
+    panel_id: str
+    index: int
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class MoveDockPanel:
+    panel_id: str
+    target_stack_id: str
+    index: int
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class DockPanel:
+    panel_id: str
+    target_stack_id: str
+    position: DockPosition
+    split_id: str
+    new_stack_id: str
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class ResizeDockSplit:
+    split_id: str
+    ratio: float
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class CloseDockPanel:
+    panel_id: str
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class ReopenDockPanel:
+    panel_id: str
+    target_stack_id: str
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class SetDockMaximized:
+    panel_id: str | None
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class SetPanelLinkGroup:
+    panel_id: str
+    group_id: str | None
+    expected_revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class ApplyWorkspaceLayout:
+    workspace: Workspace
+    layout: WorkspaceLayout
+    expected_revision: int
+    layout_name: str = "default"
+
+
+@dataclass(frozen=True, slots=True)
+class ResetWorkspaceLayout:
+    expected_revision: int
+
+
 UIAction = (
     RequestSnapshot
     | SnapshotCompleted
@@ -224,6 +361,17 @@ UIAction = (
     | SetUIScale
     | CycleLinkContext
     | ActivatePanel
+    | ActivateDockPanel
+    | ReorderDockPanel
+    | MoveDockPanel
+    | DockPanel
+    | ResizeDockSplit
+    | CloseDockPanel
+    | ReopenDockPanel
+    | SetDockMaximized
+    | SetPanelLinkGroup
+    | ApplyWorkspaceLayout
+    | ResetWorkspaceLayout
 )
 
 
@@ -260,6 +408,39 @@ def _validate_identity(request_id: str, generation: int) -> None:
         raise ValueError("request_id must be non-empty and have no surrounding whitespace")
     if generation < 0:
         raise ValueError("generation must be non-negative")
+
+
+def workspace_layout(state: AppState, workspace: Workspace | None = None) -> WorkspaceLayout:
+    """Return the immutable layout for a workspace (the active workspace by default)."""
+    selected = state.workspace if workspace is None else workspace
+    return dict(state.workspace_layouts)[selected]
+
+
+def _replace_workspace_layout(
+    state: AppState, workspace: Workspace, layout: WorkspaceLayout, *, name: str | None = None
+) -> AppState:
+    values = tuple(
+        (item, layout if item is workspace else current)
+        for item, current in state.workspace_layouts
+    )
+    return replace(
+        state,
+        workspace_layouts=values,
+        active_layout_name=state.active_layout_name if name is None else name,
+        persistence_state=PersistenceState.SAVING,
+    )
+
+
+def _mutate_active_layout(
+    state: AppState,
+    expected_revision: int,
+    mutation: Callable[[WorkspaceLayout], WorkspaceLayout],
+) -> tuple[AppState, tuple[UIEffect, ...]]:
+    current = workspace_layout(state)
+    if expected_revision != current.revision:
+        return state, ()
+    changed = mutation(current)
+    return _replace_workspace_layout(state, state.workspace, changed), ()
 
 
 def reduce(state: AppState, action: UIAction) -> tuple[AppState, tuple[UIEffect, ...]]:
@@ -344,6 +525,10 @@ def reduce(state: AppState, action: UIAction) -> tuple[AppState, tuple[UIEffect,
                     symbols_context_revision=state.symbols_context_revision,
                     interval_context_revision=state.interval_context_revision,
                     active_panel_index=state.active_panel_index,
+                    workspace_layouts=state.workspace_layouts,
+                    active_layout_name=state.active_layout_name,
+                    preferences_revision=state.preferences_revision,
+                    persistence_state=state.persistence_state,
                     toasts=state.toasts,
                     critical_error=state.critical_error,
                 ),
@@ -356,7 +541,15 @@ def reduce(state: AppState, action: UIAction) -> tuple[AppState, tuple[UIEffect,
         case SetSettingsOpen(open=open_value):
             return replace(state, settings_open=open_value, command_palette_open=False), ()
         case SetUIScale(scale_percent=scale_percent):
-            return replace(state, ui_scale_percent=scale_percent), ()
+            return (
+                replace(
+                    state,
+                    ui_scale_percent=scale_percent,
+                    preferences_revision=state.preferences_revision + 1,
+                    persistence_state=PersistenceState.SAVING,
+                ),
+                (),
+            )
         case CycleLinkContext(field=ContextField.DATASET):
             return replace(state, dataset_context_revision=state.dataset_context_revision + 1), ()
         case CycleLinkContext(field=ContextField.SYMBOLS):
@@ -366,7 +559,86 @@ def reduce(state: AppState, action: UIAction) -> tuple[AppState, tuple[UIEffect,
         case CycleLinkContext(field=field):
             raise InvariantViolationError(f"unknown ContextField: {field!r}")
         case ActivatePanel(panel_index=panel_index):
-            return replace(state, active_panel_index=panel_index), ()
+            current = workspace_layout(state)
+            visible = tuple(_visible_panel_ids(current.root))
+            if not visible:
+                return state, ()
+            changed, effects = _mutate_active_layout(
+                state,
+                current.revision,
+                lambda layout: activate(layout, visible[panel_index % len(visible)]),
+            )
+            return replace(changed, active_panel_index=panel_index), effects
+        case ActivateDockPanel(panel_id=panel_id, expected_revision=revision):
+            return _mutate_active_layout(state, revision, lambda layout: activate(layout, panel_id))
+        case ReorderDockPanel(panel_id=panel_id, index=index, expected_revision=revision):
+            return _mutate_active_layout(
+                state, revision, lambda layout: reorder(layout, panel_id, index)
+            )
+        case MoveDockPanel(
+            panel_id=panel_id,
+            target_stack_id=target,
+            index=index,
+            expected_revision=revision,
+        ):
+            return _mutate_active_layout(
+                state, revision, lambda layout: move(layout, panel_id, target, index)
+            )
+        case DockPanel(
+            panel_id=panel_id,
+            target_stack_id=target,
+            position=position,
+            split_id=split_id,
+            new_stack_id=stack_id,
+            expected_revision=revision,
+        ):
+            return _mutate_active_layout(
+                state,
+                revision,
+                lambda layout: dock(
+                    layout,
+                    panel_id,
+                    target,
+                    position,
+                    split_id=split_id,
+                    new_stack_id=stack_id,
+                ),
+            )
+        case ResizeDockSplit(split_id=split_id, ratio=ratio, expected_revision=revision):
+            return _mutate_active_layout(
+                state, revision, lambda layout: resize(layout, split_id, ratio)
+            )
+        case CloseDockPanel(panel_id=panel_id, expected_revision=revision):
+            return _mutate_active_layout(state, revision, lambda layout: close(layout, panel_id))
+        case ReopenDockPanel(panel_id=panel_id, target_stack_id=target, expected_revision=revision):
+            return _mutate_active_layout(
+                state, revision, lambda layout: reopen(layout, panel_id, target)
+            )
+        case SetDockMaximized(panel_id=panel_id, expected_revision=revision):
+            return _mutate_active_layout(
+                state,
+                revision,
+                restore if panel_id is None else lambda layout: maximize(layout, panel_id),
+            )
+        case SetPanelLinkGroup(panel_id=panel_id, group_id=group_id, expected_revision=revision):
+            return _mutate_active_layout(
+                state, revision, lambda layout: set_link_group(layout, panel_id, group_id)
+            )
+        case ApplyWorkspaceLayout(
+            workspace=workspace_value,
+            layout=layout,
+            expected_revision=revision,
+            layout_name=name,
+        ):
+            if workspace_layout(state, workspace_value).revision != revision:
+                return state, ()
+            return _replace_workspace_layout(state, workspace_value, layout, name=name), ()
+        case ResetWorkspaceLayout(expected_revision=revision):
+            if workspace_layout(state).revision != revision:
+                return state, ()
+            default = dict(_default_workspace_layouts())[state.workspace]
+            default = replace(default, revision=revision + 1)
+            return _replace_workspace_layout(state, state.workspace, default, name="default"), ()
         case _ as unreachable:
             try:
                 assert_never(unreachable)
@@ -374,20 +646,42 @@ def reduce(state: AppState, action: UIAction) -> tuple[AppState, tuple[UIEffect,
                 raise InvariantViolationError(f"unknown UIAction: {type(unreachable)!r}") from error
 
 
+def _visible_panel_ids(node: object) -> tuple[str, ...]:
+    from corthena.frontend.docking import Split, TabStack
+
+    if isinstance(node, TabStack):
+        return tuple(panel.id for panel in node.panels)
+    if isinstance(node, Split):
+        return (*_visible_panel_ids(node.first), *_visible_panel_ids(node.second))
+    raise InvariantViolationError("unknown dock node")
+
+
 __all__ = [
+    "ActivateDockPanel",
     "ActivatePanel",
     "AdvanceGeneration",
     "AppState",
+    "ApplyWorkspaceLayout",
     "CancelRequest",
+    "CloseDockPanel",
     "ContextField",
     "CycleLinkContext",
+    "DockPanel",
     "InvariantViolationError",
     "LoadSnapshot",
     "LoadState",
+    "MoveDockPanel",
+    "PersistenceState",
+    "ReopenDockPanel",
+    "ReorderDockPanel",
     "RequestSnapshot",
+    "ResetWorkspaceLayout",
+    "ResizeDockSplit",
     "RuntimeBusy",
     "SelectWorkspace",
     "SetCommandPalette",
+    "SetDockMaximized",
+    "SetPanelLinkGroup",
     "SetSettingsOpen",
     "SetUIScale",
     "Snapshot",
@@ -398,4 +692,5 @@ __all__ = [
     "UIEffect",
     "Workspace",
     "reduce",
+    "workspace_layout",
 ]

@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "source": "Go workstation deterministic Phase 5 capture helper",
+  "entries": [
+    {
+      "file": "phase5_generic_1280x720_100.png",
+      "sha256": "ce631650aa38aabc016bed7a63457a5de88e2b2d0eece688a731782312e22b5b",
+      "metadata": {"baseline_version": 1, "seed": 42, "workspace": "generic-visualization", "scenario": "normal", "width": 1280, "height": 720, "scale_percent": 100, "hidden_frames": 3, "font_icon_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc", "scenario_clock": "2026-07-10T12:00:00Z", "fixture": "phase5-generic-v1", "layout_name": "phase5-generic", "layout_state_revision": 1, "app_state_revision": 1, "backend": "windows-raylib-opengl-3.3-amd-rx5700xt", "build_identity": "go-legacy-python-cp314-raylib-6.0.1.0", "dirty_build": true},
+      "channel_tolerance": 3,
+      "max_different_ratio": 0.002
+    },
+    {
+      "file": "phase5_generic_1280x720_150.png",
+      "sha256": "5aa1ff92b1bc48a694b18e4095c710c4d8cc6bda1a28e4557bef5fc9345e3aee",
+      "metadata": {"baseline_version": 1, "seed": 42, "workspace": "generic-visualization", "scenario": "normal", "width": 1280, "height": 720, "scale_percent": 150, "hidden_frames": 3, "font_icon_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc", "scenario_clock": "2026-07-10T12:00:00Z", "fixture": "phase5-generic-v1", "layout_name": "phase5-generic", "layout_state_revision": 1, "app_state_revision": 1, "backend": "windows-raylib-opengl-3.3-amd-rx5700xt", "build_identity": "go-legacy-python-cp314-raylib-6.0.1.0", "dirty_build": true},
+      "channel_tolerance": 3,
+      "max_different_ratio": 0.002
+    },
+    {
+      "file": "phase5_generic_1280x720_200.png",
+      "sha256": "bd6e6483cb7cc98b09fb51e695579a04b10a441d68a411fa8cfd06890535b91b",
+      "metadata": {"baseline_version": 1, "seed": 42, "workspace": "generic-visualization", "scenario": "normal", "width": 1280, "height": 720, "scale_percent": 200, "hidden_frames": 3, "font_icon_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc", "scenario_clock": "2026-07-10T12:00:00Z", "fixture": "phase5-generic-v1", "layout_name": "phase5-generic", "layout_state_revision": 1, "app_state_revision": 1, "backend": "windows-raylib-opengl-3.3-amd-rx5700xt", "build_identity": "go-legacy-python-cp314-raylib-6.0.1.0", "dirty_build": true},
+      "channel_tolerance": 3,
+      "max_different_ratio": 0.002
+    },
+    {
+      "file": "phase5_generic_1920x1080_100.png",
+      "sha256": "4421c0a0dce51498e0056c10b690ba5f0dd17765670a2cc4c05e0e5629a7c5ad",
+      "metadata": {"baseline_version": 1, "seed": 42, "workspace": "generic-visualization", "scenario": "normal", "width": 1920, "height": 1080, "scale_percent": 100, "hidden_frames": 3, "font_icon_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc", "scenario_clock": "2026-07-10T12:00:00Z", "fixture": "phase5-generic-v1", "layout_name": "phase5-generic", "layout_state_revision": 1, "app_state_revision": 1, "backend": "windows-raylib-opengl-3.3-amd-rx5700xt", "build_identity": "go-legacy-python-cp314-raylib-6.0.1.0", "dirty_build": true},
+      "channel_tolerance": 3,
+      "max_different_ratio": 0.002
+    },
+    {
+      "file": "phase5_generic_1920x1080_150.png",
+      "sha256": "435abce5abe1c70175db746df00449a4b376f4c17d5753004de7f78e2bad0da6",
+      "metadata": {"baseline_version": 1, "seed": 42, "workspace": "generic-visualization", "scenario": "normal", "width": 1920, "height": 1080, "scale_percent": 150, "hidden_frames": 3, "font_icon_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc", "scenario_clock": "2026-07-10T12:00:00Z", "fixture": "phase5-generic-v1", "layout_name": "phase5-generic", "layout_state_revision": 1, "app_state_revision": 1, "backend": "windows-raylib-opengl-3.3-amd-rx5700xt", "build_identity": "go-legacy-python-cp314-raylib-6.0.1.0", "dirty_build": true},
+      "channel_tolerance": 3,
+      "max_different_ratio": 0.002
+    },
+    {
+      "file": "phase5_generic_1920x1080_200.png",
+      "sha256": "b294065b36e598ae24a1f37911e57035437d484d05e468c17c574a83c14b44c6",
+      "metadata": {"baseline_version": 1, "seed": 42, "workspace": "generic-visualization", "scenario": "normal", "width": 1920, "height": 1080, "scale_percent": 200, "hidden_frames": 3, "font_icon_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc", "scenario_clock": "2026-07-10T12:00:00Z", "fixture": "phase5-generic-v1", "layout_name": "phase5-generic", "layout_state_revision": 1, "app_state_revision": 1, "backend": "windows-raylib-opengl-3.3-amd-rx5700xt", "build_identity": "go-legacy-python-cp314-raylib-6.0.1.0", "dirty_build": true},
+      "channel_tolerance": 3,
+      "max_different_ratio": 0.002
+    }
+  ]
+}

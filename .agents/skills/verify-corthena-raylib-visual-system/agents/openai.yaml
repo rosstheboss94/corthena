@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Corthena Raylib Visual System"
+  short_description: "Verify Corthena Raylib visual compliance"
+  default_prompt: "Use $verify-corthena-raylib-visual-system to audit a Corthena Raylib visual change and its golden evidence."

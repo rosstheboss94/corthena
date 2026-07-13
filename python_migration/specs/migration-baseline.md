@@ -28,6 +28,13 @@ Coordinator, worker, data catalog/import, experiment, job/result, model,
 inference, and real-backend ports are outside Phase 12. Add their rows only
 when their owning route begins.
 
+## Phase 5 and Phase 5b Ownership Map
+
+| Python target | Legacy reference area | Legacy tests/baselines | Required evidence |
+|---|---|---|---|
+| chart and table numerical kernels, LOD, cache/workers, and virtualization foundation (Phase 5) | frontend chart, table, visualization adapter, and effects | chart/table unit, fuzz, service, and benchmark evidence | deterministic numerical parity, proportional work, bounded lifecycles, and immutable publication |
+| generic rendering, interactions, cross-scope request/pagination parity, and six-case visual acceptance (Phase 5b) | frontend chart, table, golden, visualization adapter, effects, and deterministic Go capture helper | chart/table interaction, service, race, lifecycle, and `phase5-golden` evidence | functional and replay parity plus Python decoded-RGBA parity against reviewed Go PNGs |
+
 ## Parity Criteria
 
 A port is accepted only when all applicable criteria below pass against the
@@ -51,8 +58,12 @@ architectural decision with meaningful alternatives.
 
 The canonical visual targets are lossless legacy PNGs and their versioned JSON
 manifests. Phase 1--4 targets live in
-`internal/app/workstation/testdata/phase1to4-golden/`. Phase 5--9 targets are
-the existing manifest-backed matrices under
+`internal/app/workstation/testdata/phase1to4-golden/`. Phase 5b owns creation
+and acceptance of the dedicated generic visualization matrix under
+`internal/app/workstation/testdata/phase5-golden/`; its reviewed deterministic
+Go capture helper, manifest, and six lossless captures are canonical Phase 5b
+evidence. Phase 6--9 targets
+are the manifest-backed matrices under
 `internal/app/workstation/testdata/{research-golden,phase7-golden,phase8-golden,phase9-golden}/`.
 The JPEGs in `python_migration/screenshots/` remain quick visual references.
 

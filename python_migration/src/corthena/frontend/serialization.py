@@ -5,17 +5,35 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TypeIs
 
+from corthena.frontend.docking import DockPosition
+from corthena.frontend.persistence import (
+    LayoutCollection,
+    NamedLayout,
+    decode_layouts,
+    encode_layouts,
+)
 from corthena.frontend.state import (
+    ActivateDockPanel,
     ActivatePanel,
     AdvanceGeneration,
+    ApplyWorkspaceLayout,
     CancelRequest,
+    CloseDockPanel,
     ContextField,
     CycleLinkContext,
+    DockPanel,
     LoadSnapshot,
+    MoveDockPanel,
+    ReopenDockPanel,
+    ReorderDockPanel,
     RequestSnapshot,
+    ResetWorkspaceLayout,
+    ResizeDockSplit,
     RuntimeBusy,
     SelectWorkspace,
     SetCommandPalette,
+    SetDockMaximized,
+    SetPanelLinkGroup,
     SetSettingsOpen,
     SetUIScale,
     Snapshot,
@@ -27,7 +45,7 @@ from corthena.frontend.state import (
     Workspace,
 )
 
-JsonScalar = str | int | bool | None
+JsonScalar = str | int | float | bool | None
 JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 
 
@@ -114,6 +132,87 @@ def encode_action(action: UIAction) -> dict[str, JsonValue]:
             return {"type": "cycle_link_context", "field": field.value}
         case ActivatePanel(panel_index=panel_index):
             return {"type": "activate_panel", "panel_index": panel_index}
+        case ActivateDockPanel(panel_id=panel_id, expected_revision=revision):
+            return {
+                "type": "activate_dock_panel",
+                "panel_id": panel_id,
+                "expected_revision": revision,
+            }
+        case ReorderDockPanel(panel_id=panel_id, index=index, expected_revision=revision):
+            return {
+                "type": "reorder_dock_panel",
+                "panel_id": panel_id,
+                "index": index,
+                "expected_revision": revision,
+            }
+        case MoveDockPanel(
+            panel_id=panel_id, target_stack_id=target, index=index, expected_revision=revision
+        ):
+            return {
+                "type": "move_dock_panel",
+                "panel_id": panel_id,
+                "target_stack_id": target,
+                "index": index,
+                "expected_revision": revision,
+            }
+        case DockPanel(
+            panel_id=panel_id,
+            target_stack_id=target,
+            position=position,
+            split_id=split_id,
+            new_stack_id=stack_id,
+            expected_revision=revision,
+        ):
+            return {
+                "type": "dock_panel",
+                "panel_id": panel_id,
+                "target_stack_id": target,
+                "position": position.value,
+                "split_id": split_id,
+                "new_stack_id": stack_id,
+                "expected_revision": revision,
+            }
+        case ResizeDockSplit(split_id=split_id, ratio=ratio, expected_revision=revision):
+            return {
+                "type": "resize_dock_split",
+                "split_id": split_id,
+                "ratio": ratio,
+                "expected_revision": revision,
+            }
+        case CloseDockPanel(panel_id=panel_id, expected_revision=revision):
+            return {"type": "close_dock_panel", "panel_id": panel_id, "expected_revision": revision}
+        case ReopenDockPanel(panel_id=panel_id, target_stack_id=target, expected_revision=revision):
+            return {
+                "type": "reopen_dock_panel",
+                "panel_id": panel_id,
+                "target_stack_id": target,
+                "expected_revision": revision,
+            }
+        case SetDockMaximized(panel_id=panel_id, expected_revision=revision):
+            return {
+                "type": "set_dock_maximized",
+                "panel_id": panel_id,
+                "expected_revision": revision,
+            }
+        case SetPanelLinkGroup(panel_id=panel_id, group_id=group_id, expected_revision=revision):
+            return {
+                "type": "set_panel_link_group",
+                "panel_id": panel_id,
+                "group_id": group_id,
+                "expected_revision": revision,
+            }
+        case ApplyWorkspaceLayout(
+            workspace=workspace, layout=layout, expected_revision=revision, layout_name=name
+        ):
+            payload = encode_layouts(LayoutCollection(0, (NamedLayout(name, layout),))).decode()
+            return {
+                "type": "apply_workspace_layout",
+                "workspace": workspace.value,
+                "layout_document": payload,
+                "expected_revision": revision,
+            }
+        case ResetWorkspaceLayout(expected_revision=revision):
+            return {"type": "reset_workspace_layout", "expected_revision": revision}
 
 
 def decode_action(value: object) -> UIAction:
@@ -162,6 +261,99 @@ def decode_action(value: object) -> UIAction:
     if kind == "activate_panel":
         record = _object(value, frozenset({"type", "panel_index"}))
         return ActivatePanel(_integer(record, "panel_index"))
+    if kind in {"activate_dock_panel", "close_dock_panel"}:
+        record = _object(value, frozenset({"type", "panel_id", "expected_revision"}))
+        cls = ActivateDockPanel if kind == "activate_dock_panel" else CloseDockPanel
+        return cls(_string(record, "panel_id"), _integer(record, "expected_revision"))
+    if kind == "reorder_dock_panel":
+        record = _object(value, frozenset({"type", "panel_id", "index", "expected_revision"}))
+        return ReorderDockPanel(
+            _string(record, "panel_id"),
+            _integer(record, "index"),
+            _integer(record, "expected_revision"),
+        )
+    if kind == "move_dock_panel":
+        record = _object(
+            value, frozenset({"type", "panel_id", "target_stack_id", "index", "expected_revision"})
+        )
+        return MoveDockPanel(
+            _string(record, "panel_id"),
+            _string(record, "target_stack_id"),
+            _integer(record, "index"),
+            _integer(record, "expected_revision"),
+        )
+    if kind == "dock_panel":
+        record = _object(
+            value,
+            frozenset(
+                {
+                    "type",
+                    "panel_id",
+                    "target_stack_id",
+                    "position",
+                    "split_id",
+                    "new_stack_id",
+                    "expected_revision",
+                }
+            ),
+        )
+        return DockPanel(
+            _string(record, "panel_id"),
+            _string(record, "target_stack_id"),
+            DockPosition(_string(record, "position")),
+            _string(record, "split_id"),
+            _string(record, "new_stack_id"),
+            _integer(record, "expected_revision"),
+        )
+    if kind == "resize_dock_split":
+        record = _object(value, frozenset({"type", "split_id", "ratio", "expected_revision"}))
+        ratio = record["ratio"]
+        if not isinstance(ratio, int | float) or isinstance(ratio, bool):
+            raise ValueError("ratio must be numeric")
+        return ResizeDockSplit(
+            _string(record, "split_id"), float(ratio), _integer(record, "expected_revision")
+        )
+    if kind == "reopen_dock_panel":
+        record = _object(
+            value, frozenset({"type", "panel_id", "target_stack_id", "expected_revision"})
+        )
+        return ReopenDockPanel(
+            _string(record, "panel_id"),
+            _string(record, "target_stack_id"),
+            _integer(record, "expected_revision"),
+        )
+    if kind == "set_dock_maximized":
+        record = _object(value, frozenset({"type", "panel_id", "expected_revision"}))
+        panel = record["panel_id"]
+        if panel is not None and not isinstance(panel, str):
+            raise ValueError("panel_id must be a string or null")
+        return SetDockMaximized(panel, _integer(record, "expected_revision"))
+    if kind == "set_panel_link_group":
+        record = _object(value, frozenset({"type", "panel_id", "group_id", "expected_revision"}))
+        panel = record["panel_id"]
+        group = record["group_id"]
+        if not isinstance(panel, str):
+            raise ValueError("panel_id must be a string")
+        if group is not None and not isinstance(group, str):
+            raise ValueError("group_id must be a string or null")
+        return SetPanelLinkGroup(panel, group, _integer(record, "expected_revision"))
+    if kind == "apply_workspace_layout":
+        record = _object(
+            value, frozenset({"type", "workspace", "layout_document", "expected_revision"})
+        )
+        collection = decode_layouts(_string(record, "layout_document").encode())
+        if len(collection.layouts) != 1:
+            raise ValueError("layout document must contain exactly one layout")
+        named = collection.layouts[0]
+        return ApplyWorkspaceLayout(
+            Workspace(_string(record, "workspace")),
+            named.layout,
+            _integer(record, "expected_revision"),
+            named.name,
+        )
+    if kind == "reset_workspace_layout":
+        record = _object(value, frozenset({"type", "expected_revision"}))
+        return ResetWorkspaceLayout(_integer(record, "expected_revision"))
     if kind == "snapshot_completed":
         fields = frozenset({"type", "request_id", "generation", "seed", "as_of", "items"})
         record = _object(value, fields)

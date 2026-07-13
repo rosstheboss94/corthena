@@ -1,0 +1,4 @@
+interface:
+  display_name: "Corthena Docking and Persistence Builder"
+  short_description: "Build deterministic Phase 4 docking and persistence"
+  default_prompt: "Use $build-corthena-docking-and-persistence to implement deterministic Phase 4 docking, controls, preferences, responsive scaling, and layout persistence."

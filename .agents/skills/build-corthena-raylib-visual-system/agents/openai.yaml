@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Corthena Raylib Visual System"
+  short_description: "Build consistent Corthena Raylib visuals"
+  default_prompt: "Use $build-corthena-raylib-visual-system to implement a screenshot-driven Corthena Raylib visual change."

@@ -12,4 +12,5 @@ Windows Raylib window. Read the focused sections:
 - [Shell and state](foundation-shell-state.md)
 - [Async effects and ownership](foundation-async-effects.md)
 - [Persistence and responsive behavior](foundation-persistence.md)
+- [Raylib visual system](raylib-visual-system.md)
 - [Visualization](visualization.md)
