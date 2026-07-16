@@ -20,7 +20,7 @@ scenarios, parity tests, and any accepted deviations before it is accepted.
 |---|---|---|---|
 | project packaging and entry point | workstation launch and packaging | workstation launch test | reproducible environment and a hidden shell launch |
 | workstation lifecycle and UI-thread adapter | UI lifecycle and native adapter | lifecycle test and Phase 1--4 PNG manifest | one locked UI-thread lifecycle and cleanup test |
-| shell state, workspace navigation, controls, and status | frontend state and shell | frontend state tests and Phase 1--4 PNG manifest | deterministic action replay and visual parity |
+| shell state, workspace navigation, controls, and status | ui state and shell | ui state tests and Phase 1--4 PNG manifest | deterministic action replay and visual parity |
 | simulator-backed startup shell | simulator and effects | simulator/effects tests and Phase 2 PNG scenario | deterministic seeded startup state |
 | docking, preferences, and layout persistence | layouts, preferences, and drafts | persistence tests and Phase 4 PNG scenario | round-trip persistence, recovery, and visual parity |
 
@@ -32,8 +32,8 @@ when their owning route begins.
 
 | Python target | Legacy reference area | Legacy tests/baselines | Required evidence |
 |---|---|---|---|
-| chart and table numerical kernels, LOD, cache/workers, and virtualization foundation (Phase 5) | frontend chart, table, visualization adapter, and effects | chart/table unit, fuzz, service, and benchmark evidence | deterministic numerical parity, proportional work, bounded lifecycles, and immutable publication |
-| generic rendering, interactions, cross-scope request/pagination parity, and six-case visual acceptance (Phase 5b) | frontend chart, table, golden, visualization adapter, effects, and deterministic Go capture helper | chart/table interaction, service, race, lifecycle, and `phase5-golden` evidence | functional and replay parity plus Python decoded-RGBA parity against reviewed Go PNGs |
+| chart and table numerical kernels, LOD, cache/workers, and virtualization foundation (Phase 5) | ui chart, table, visualization adapter, and effects | chart/table unit, fuzz, service, and benchmark evidence | deterministic numerical parity, proportional work, bounded lifecycles, and immutable publication |
+| generic rendering, interactions, cross-scope request/pagination parity, and six-case visual acceptance (Phase 5b) | ui chart, table, golden, visualization adapter, effects, and deterministic Go capture helper | chart/table interaction, service, race, lifecycle, and `phase5-golden` evidence | functional and replay parity plus Python decoded-RGBA parity against reviewed Go PNGs |
 
 ## Parity Criteria
 

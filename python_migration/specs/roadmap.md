@@ -1,10 +1,10 @@
-# Frontend-First Implementation Roadmap
+# UI-First Implementation Roadmap
 
 **Status:** In progress
 **Owner:** Project  
 **Last updated:** 2026-07-12
 
-Build deterministic Python/Cython frontend workflows before the real coordinator
+Build deterministic Python/Cython ui workflows before the real coordinator
 and research engine. Behavioral requirements live in owning
 specifications; `specs/routing/phase-*.md` provides compact reading routes and
 `python-migration.md` owns rewrite sequencing.
@@ -12,8 +12,8 @@ specifications; `specs/routing/phase-*.md` provides compact reading routes and
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Python/Cython Windows compatibility | Complete; the clean evidence-producing gate passed for exact regular CPython `3.14.2` and `cp314-win_amd64`. |
-| 1 | [Strict Raylib frontend scaffold](routing/phase-1.md) | Complete; the packaged assets, typed adapter, UI-thread checks, bounded native smoke launch, cleanup tests, and configured gates pass. |
-| 2 | [Typed frontend architecture and simulator](routing/phase-2.md) | Complete; typed immutable state, closed actions/effects, deterministic simulation, bounded workers, replay, cancellation, saturation, and lifecycle evidence pass. |
+| 1 | [Strict Raylib ui scaffold](routing/phase-1.md) | Complete; the packaged assets, typed adapter, UI-thread checks, bounded native smoke launch, cleanup tests, and configured gates pass. |
+| 2 | [Typed ui architecture and simulator](routing/phase-2.md) | Complete; typed immutable state, closed actions/effects, deterministic simulation, bounded workers, replay, cancellation, saturation, and lifecycle evidence pass. |
 | 3 | [Application shell](routing/phase-3.md) | Complete; the Go-equivalent Raylib shell, typed interactions, bounded lifecycle, raw-RGBA capture, and manifest-owned PNG parity pass. |
 | 4 | [Docking, controls, settings, responsive persistence](routing/phase-4.md) | Complete by user acceptance; live immutable workspace docking, directional drop targets and previews, splitter interaction, revisioned persistence, responsive geometry, automated quality gates, and manual docking validation pass. A revised split-layout golden remains follow-up evidence. |
 | 5 | [Charts and tables foundation](routing/phase-5.md) | Complete; accepted typed numerical kernels, clipping, LOD, virtualization, bounded generation-safe cache/workers, immutable publication, lifecycle checks, proportional-work evidence, and benchmarks are delivered. |
@@ -22,7 +22,7 @@ specifications; `specs/routing/phase-*.md` provides compact reading routes and
 | 7 | Data and Experiments | Pending; implement catalog/import, validation, estimates, autosave, immutable submission, benchmarks, and the 60-image matrix. |
 | 8 | Jobs and Results | Pending; implement the virtual queue, lifecycle controls, checkpoints, immutable comparisons, charts, stale-generation behavior, and the 60-image matrix. |
 | 9 | Models and Inference | Pending; implement the immutable registry, transactional aliases, artifact provenance/tree validation, compatibility-gated scoring, rankings, distributions, history, export, cancellation, and the 66-image golden matrix. |
-| 10 | Backend-swap readiness | Keep the simulator behind `FrontendClient`; add contract, cancellation, reconnect, reconciliation, stale-generation, adapter, reducer, lifecycle, and golden coverage. |
+| 10 | Backend-swap readiness | Keep the simulator behind `UIClient`; add contract, cancellation, reconnect, reconciliation, stale-generation, adapter, reducer, lifecycle, and golden coverage. |
 | 11 | Python/Cython foundation | In progress; authoritative specs, ADRs, technology stack, quality gates, entrypoint mapping, and screenshot baseline policy define the implementation before runtime code changes. |
 | 12 | Python scaffold and initial shell | Pending; create the reproducible `uv` scaffold and Phase 1--4 shell only, then accept it through named PNG baselines and parity evidence. |
 
@@ -56,13 +56,13 @@ Package scaffolding alone never marks a phase ported.
 Use the [Phase 1 task route](routing/phase-1.md) with these required skills, in
 order:
 
-1. `$build-corthena-raylib-frontend`
+1. `$build-corthena-raylib-ui`
 2. `$python-best-practices`
 3. `$python-windows-compat-gate`
 4. `$review-corthena-code`
 
 Phase 1 is complete only when the strict empty workstation scaffold has a
-named project entry point and frontend package; validates bundled fonts and
+named project entry point and ui package; validates bundled fonts and
 icons before native initialization; contains Raylib, Raygui, and Windows
 values in a typed adapter; locks and enforces the UI OS thread for every native
 call; renders at least one frame in a bounded smoke launch; and shuts down
@@ -76,13 +76,13 @@ workflows from Phase 2 or later.
 Use the [Phase 2 task route](routing/phase-2.md) with these required skills, in
 order:
 
-1. `$build-corthena-frontend-state-and-simulator`
+1. `$build-corthena-ui-state-and-simulator`
 2. `$python-best-practices`
-3. `$verify-corthena-frontend-state-and-simulator`
+3. `$verify-corthena-ui-state-and-simulator`
 4. `$review-corthena-code`
 
-Phase 2 is complete only when immutable typed frontend state, closed action and
-effect variants, a pure deterministic reducer, a narrow `FrontendClient`, a
+Phase 2 is complete only when immutable typed ui state, closed action and
+effect variants, a pure deterministic reducer, a narrow `UIClient`, a
 bounded effects runtime, and the seeded simulator are implemented behind typed
 boundaries. Identical seeds and action sequences must replay to identical
 state across completion orders; stale generations must be rejected; and
@@ -218,7 +218,7 @@ domain workflows.
 - Formatting, linting, type checks, tests, lifecycle/concurrency checks,
   benchmarks where applicable, Cython builds, and vulnerability checks pass.
 
-## After the frontend
+## After the ui
 
 Implement the Python coordinator, health, worker protocol, repositories,
 imports, catalog revisions, typed features, targets, leakage-safe splits,

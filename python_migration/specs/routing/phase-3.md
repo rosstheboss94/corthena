@@ -5,8 +5,8 @@ Non-authoritative navigation aid; canonical behavior remains in linked specs.
 ## Read first
 
 - Required: `AGENTS.md`, `design-pattern.md`, Phase 3 in `roadmap.md`,
-  `frontend/foundation.md`, `frontend/foundation-shell-state.md`,
-  `frontend/foundation-async-effects.md`, `migration-baseline.md`,
+  `ui/foundation.md`, `ui/foundation-shell-state.md`,
+  `ui/foundation-async-effects.md`, `migration-baseline.md`,
   `quality-common.md`, `quality-concurrency.md`, and
   `quality-visualization.md`.
 - Conditional: `technology-stack.md` for dependency or tooling changes;

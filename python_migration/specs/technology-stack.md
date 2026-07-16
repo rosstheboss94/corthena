@@ -92,7 +92,7 @@ that policy. Queues, cancellation events, async tasks, and library pools remain
 behind explicit typed adapters; no distributed runtime or external broker is
 approved.
 
-## Frontend
+## UI
 
 | Responsibility | Technology |
 |---|---|

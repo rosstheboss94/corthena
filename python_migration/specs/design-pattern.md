@@ -2,12 +2,15 @@
 
 **Status:** Authoritative  
 **Owner:** Architecture  
-**Last updated:** 2026-07-12  
+**Last updated:** 2026-07-13
+
 **Related:** [Specification index](README.md), [Concurrency and parallelism](concurrency-and-parallelism.md), [Technology stack](technology-stack.md), [System architecture](system-architecture.md), [API](api.md), [Python migration](python-migration.md)
 
 This is the shared architecture pattern specification for Python/Cython routes.
-Future agents should update this document when module boundaries, public
-interfaces, dependency direction, or recurring design patterns change.
+When module boundaries, public interfaces, dependency direction, or recurring
+design patterns change, agents record what changed and why under `missing/`.
+They update this authoritative document only when the user explicitly requests
+the specification change.
 
 ## Architectural style
 
@@ -75,7 +78,7 @@ Allowed direction is inward toward stable contracts and domain concepts, then
 outward through adapters selected at process composition roots.
 
 ```text
-frontend ─┐
+ui ─┐
 cli ──────┼──> client ──> contracts
 external ─┘
 
@@ -114,7 +117,7 @@ project-root/
 │       ├── coordinator/      # loopback API, scheduler, workers, health
 │       ├── worker/           # worker entry point and job protocol runtime
 │       ├── cli/              # command-line surface
-│       ├── frontend/         # Raylib shell, state, effects, widgets
+│       ├── ui/         # Raylib shell, state, effects, widgets
 │       ├── domain/           # shared value objects and core invariants
 │       ├── data/             # imports, catalog, canonical bars
 │       ├── features/         # feature registry and materialization
@@ -163,7 +166,7 @@ artifact promotion, and worker launch.
 events, job-local mutable state, checkpoint coordination, cancellation, and
 bounded library pools.
 
-`frontend` owns Raylib/Raygui UI state, docking, widgets, effects, linked
+`ui` owns Raylib/Raygui UI state, docking, widgets, effects, linked
 contexts, chart/table rendering, generation tokens, and immutable render-ready
 buffers.
 

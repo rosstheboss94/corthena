@@ -53,5 +53,5 @@ bindings require Windows build validation and narrow typed boundaries.
 - [Models](../models.md)
 - [API](../api.md)
 - [Data and features](../data-and-features.md)
-- [Frontend foundation](../frontend/foundation.md)
+- [UI foundation](../ui/foundation.md)
 - [Quality](../quality.md)

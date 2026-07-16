@@ -3,8 +3,9 @@
 Specification-first, Windows-focused trading workstation. CPython, `uv`,
 `pyproject.toml`, and `specs/technology-stack.md` define the runtime, tooling,
 tests, packaging, and approved direct dependencies. The repository is in a
-Python/Cython migration layer: revise authoritative specs before rewriting
-runtime code, and do not invent commands before project files exist.
+Python/Cython migration layer: record behavior and public-contract changes
+under `specs/missing/` before rewriting runtime code, and do not invent commands
+before project files exist.
 
 All Python rewrite code belongs under this migration root:
 `C:\Users\torra\Desktop\Projects\corthena\python_migration`. Keep the existing
@@ -37,17 +38,21 @@ the reference implementation until the Python rewrite reaches accepted parity.
 
 ## Before planning or editing
 
-Classify the task, read `specs/design-pattern.md`, then read only the route-specific
-documents below. Read `specs/README.md` when ownership crosses documents. Read
-`specs/quality.md` for implementation, review, test, or performance work;
-`technology-stack.md` for dependencies or tooling; `api.md` for public/process
-boundaries. Update the owning spec when behavior or a public contract changes.
+For every task, first read `specs/contract.md`; it defines the mandatory Python
+authoring and agent-context rules. Then classify the task, read
+`specs/design-pattern.md`, and read only the route-specific documents below.
+Read `specs/README.md` when ownership crosses documents. Read `specs/quality.md`
+for implementation, review, test, or performance work; `technology-stack.md`
+for dependencies or tooling; `api.md` for public/process boundaries. When
+behavior or a public contract changes, do not update the owning specification;
+add or update a concise Markdown note under `specs/missing/` that states what
+changed and why, using the format in `specs/missing/README.md`.
 
 ## Specification routing
 
 | Task | Required specifications |
 |---|---|
-| All Python/Cython migration routes | `specs/design-pattern.md`, plus the owning subsystem spec |
+| All Python/Cython migration routes | `specs/contract.md`, `specs/design-pattern.md`, plus the owning subsystem spec |
 | Architecture, module boundaries, route handlers, adapters, dependency direction, or design patterns | `specs/design-pattern.md`, plus the owning subsystem spec |
 | Product scope or requirements | `specs/product.md`, `specs/roadmap.md` |
 | Dependencies, packaging, or tooling | `specs/technology-stack.md`, `specs/quality.md` |
@@ -62,10 +67,10 @@ boundaries. Update the owning spec when behavior or a public contract changes.
 | Jobs, scheduling, checkpoints, pause/resume | `specs/training-runtime.md`, `specs/models.md` |
 | Evaluation, backtests, registry, inference | `specs/evaluation-and-inference.md` |
 | Coordinator, DTOs, health, event streaming | `specs/api.md` plus the owning domain spec |
-| Raylib shell, state, docking, styling | `specs/frontend/foundation.md` |
-| Raylib visual design, styling, geometry, typography, interaction states, or responsive presentation | `specs/frontend/raylib-visual-system.md`, `specs/frontend/foundation.md`, plus the owning shell, workspace, or visualization spec |
-| Workspace or panel behavior | `specs/frontend/workspaces.md`, `specs/frontend/foundation.md` |
-| Charts, tables, linked views | `specs/frontend/visualization.md`, `specs/frontend/foundation.md` |
+| Raylib shell, state, docking, styling | `specs/ui/foundation.md` |
+| Raylib visual design, styling, geometry, typography, interaction states, or responsive presentation | `specs/ui/raylib-visual-system.md`, `specs/ui/foundation.md`, plus the owning shell, workspace, or visualization spec |
+| Workspace or panel behavior | `specs/ui/workspaces.md`, `specs/ui/foundation.md` |
+| Charts, tables, linked views | `specs/ui/visualization.md`, `specs/ui/foundation.md` |
 | Implementation, review, tests, typing, or performance | `specs/quality.md`, `specs/concurrency-and-parallelism.md` when concurrent or parallel work is involved, plus the owning subsystem spec |
 | Delivery status or sequencing | `specs/roadmap.md` |
 | Architectural decision changes | Relevant living specs and `specs/decisions/README.md` |
