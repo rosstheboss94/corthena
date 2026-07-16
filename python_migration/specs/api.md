@@ -3,7 +3,7 @@
 **Status:** Authoritative  
 **Owner:** Platform  
 **Last updated:** 2026-07-12
-**Related:** [Technology stack](technology-stack.md), [System architecture](system-architecture.md), [Frontend foundation](frontend/foundation.md)
+**Related:** [Technology stack](technology-stack.md), [System architecture](system-architecture.md), [UI foundation](ui/foundation.md)
 
 ## Technology Constraints
 

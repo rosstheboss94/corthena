@@ -15,14 +15,14 @@ Use one Raylib OS window with a custom retained dock tree, top workspace tabs, t
 
 - Fixed screens.
 - Fully native detachable windows.
-- A conventional web frontend.
+- A conventional web ui.
 
 ## Consequences
 
-Dock geometry, focus, persistence, tables, and charts are first-party frontend infrastructure. Native windows and free-floating panels are deferred.
+Dock geometry, focus, persistence, tables, and charts are first-party ui infrastructure. Native windows and free-floating panels are deferred.
 
 ## Affected specifications
 
-- [Frontend foundation](../frontend/foundation.md)
-- [Frontend workspaces](../frontend/workspaces.md)
-- [Frontend visualization](../frontend/visualization.md)
+- [UI foundation](../ui/foundation.md)
+- [UI workspaces](../ui/workspaces.md)
+- [UI visualization](../ui/visualization.md)

@@ -5,13 +5,13 @@ Non-authoritative navigation aid; canonical behavior remains in linked specs.
 ## Read first
 
 - Required: `AGENTS.md`, `design-pattern.md`, Phase 5 in `roadmap.md`,
-  `frontend/foundation.md`, `frontend/foundation-shell-state.md`,
-  `frontend/foundation-async-effects.md`, `frontend/raylib-visual-system.md`,
-  `frontend/visualization.md`, `migration-baseline.md`, `quality-common.md`,
+  `ui/foundation.md`, `ui/foundation-shell-state.md`,
+  `ui/foundation-async-effects.md`, `ui/raylib-visual-system.md`,
+  `ui/visualization.md`, `migration-baseline.md`, `quality-common.md`,
   `quality-concurrency.md`, and `quality-visualization.md`.
 - Conditional: `technology-stack.md` for dependency, native, Cython, or tooling
   changes; `api.md` for deliberate client, Arrow, or process-boundary changes;
-  and `frontend/workspaces.md` only to enforce the Phase 6 boundary.
+  and `ui/workspaces.md` only to enforce the Phase 6 boundary.
 - Legacy parity references: `internal/frontend/chart/`,
   `internal/frontend/table/`, `internal/frontend/golden/`, visualization-related
   state and effects, `internal/frontend/nativeui/visualization_windows.go`, and

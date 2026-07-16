@@ -33,7 +33,7 @@ corthena-phase0-gate = "corthena.compatibility.gate:main"
 corthena-workstation = "corthena.workstation.__main__:main"
 
 [tool.setuptools.package-data]
-"corthena.frontend.assets" = [
+"corthena.ui.assets" = [
     "fonts/*.ttf",
     "icons/*.png",
     "licenses/*.txt",

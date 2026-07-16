@@ -5,8 +5,8 @@ Non-authoritative navigation aid; canonical behavior remains in linked specs.
 ## Read first
 
 - Required: `AGENTS.md`, `design-pattern.md`, Phase 2 in `roadmap.md`,
-  `frontend/foundation.md`, `frontend/foundation-shell-state.md`,
-  `frontend/foundation-async-effects.md`, `quality-common.md`,
+  `ui/foundation.md`, `ui/foundation-shell-state.md`,
+  `ui/foundation-async-effects.md`, `quality-common.md`,
   `quality-concurrency.md`, and `migration-baseline.md`.
 - Conditional: `api.md` only for deliberate public or process contracts;
   `technology-stack.md` for dependency or tooling changes; and
@@ -18,7 +18,7 @@ Non-authoritative navigation aid; canonical behavior remains in linked specs.
   `UIAction` and `UIEffect` variants with validated serialized discriminators.
 - Keep the reducer pure and deterministic. Apply results in stable logical
   order rather than arrival order and publish immutable snapshots.
-- Keep panels and future shell code behind a narrow typed `FrontendClient`;
+- Keep panels and future shell code behind a narrow typed `UIClient`;
   simulator-specific values and behavior must not cross that boundary.
 - Run effects on owned workers through bounded typed queues. Render-thread
   sends remain nonblocking, replaceable work coalesces or reports typed busy
@@ -40,9 +40,9 @@ and real coordinator, network, repository, or domain behavior.
 
 ## Required skill order
 
-1. `$build-corthena-frontend-state-and-simulator`
+1. `$build-corthena-ui-state-and-simulator`
 2. `$python-best-practices`
-3. `$verify-corthena-frontend-state-and-simulator`
+3. `$verify-corthena-ui-state-and-simulator`
 4. `$review-corthena-code`
 
 ## Completion evidence
@@ -54,7 +54,7 @@ and real coordinator, network, repository, or domain behavior.
 - Focused lifecycle tests cover queue saturation, nonblocking sends, bounded
   draining, wrong/stale-generation rejection, cancellation before and during
   work, queue closure, idempotent shutdown, and thread/task leak checks.
-- Boundary tests prove frontend state and reducers depend on `FrontendClient`
+- Boundary tests prove ui state and reducers depend on `UIClient`
   contracts and do not import, expose, or branch on simulator internals.
 - The migration-baseline Phase 2 simulator-backed startup scenario passes with
   its recorded seed and fixed clock, without introducing the Phase 3 shell.

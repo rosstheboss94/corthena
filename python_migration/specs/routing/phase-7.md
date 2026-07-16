@@ -2,12 +2,12 @@
 
 Non-authoritative navigation aid; canonical behavior remains in linked specs.
 
-- Required: `AGENTS.md`, `roadmap.md`, `frontend/workspace-data.md`,
-  `frontend/workspace-experiments.md`, `frontend/foundation-async-effects.md`,
+- Required: `AGENTS.md`, `roadmap.md`, `ui/workspace-data.md`,
+  `ui/workspace-experiments.md`, `ui/foundation-async-effects.md`,
   `data-and-features.md`, `quality-common.md`, `quality-concurrency.md`.
-- Conditional: `api.md` for DTO/process contracts; `frontend/visualization.md`
+- Conditional: `api.md` for DTO/process contracts; `ui/visualization.md`
   for charts/tables; `technology-stack.md` for dependencies.
-- Code: existing frontend client, state/actions/effects, simulator, Data and
+- Code: existing ui client, state/actions/effects, simulator, Data and
   Experiments panels, persistence adapters, and tests.
 - Verify with `verify-corthena-data-and-experiments`.
 - Exclude: real coordinator repositories, model fitting, and unrelated Jobs,

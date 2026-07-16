@@ -1,5 +1,6 @@
-from corthena.compatibility.loopback import run_loopback_probe
-from corthena.compatibility.runtime import RuntimeCapabilities
+from corthena.compatibility.loopback.protocol import LoopbackProbeProtocol
+from corthena.compatibility.loopback.uvicorn_probe import UvicornLoopbackProbe
+from corthena.compatibility.runtime.models import RuntimeCapabilities
 
 
 def test_loopback_http_websocket_lifecycle() -> None:
@@ -15,6 +16,7 @@ def test_loopback_http_websocket_lifecycle() -> None:
         library_pool_limit=1,
         status="healthy",
     )
-    evidence = run_loopback_probe(runtime)
+    probe: LoopbackProbeProtocol = UvicornLoopbackProbe()
+    evidence = probe.run(runtime)
     assert evidence.correlation_id == "phase0-correlation"
     assert evidence.event_type == "compatibility.ready"

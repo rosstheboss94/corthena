@@ -3,7 +3,7 @@
 Corthena is a Windows-first trading research workstation being migrated to a
 typed Python/Cython modular monolith. The Python implementation currently
 contains the Phase 0 compatibility scaffold and the Phase 1 strict Raylib
-workstation frontend lifecycle.
+workstation UI lifecycle.
 
 The coordinator, worker, and research CLI entry points are not yet implemented.
 The workstation and Phase 0 compatibility gate are runnable. See

@@ -6,7 +6,7 @@
 
 **Last updated:** 2026-07-12
 
-**Related:** [System architecture](system-architecture.md), [Technology stack](technology-stack.md), [Training runtime](training-runtime.md), [API](api.md), [Frontend foundation](frontend/foundation.md), [Concurrency verification](quality-concurrency.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md)
+**Related:** [System architecture](system-architecture.md), [Technology stack](technology-stack.md), [Training runtime](training-runtime.md), [API](api.md), [UI foundation](ui/foundation.md), [Concurrency verification](quality-concurrency.md), [ADR 0008](decisions/0008-regular-cpython-concurrency.md)
 
 This document owns workstation-wide concurrency and parallelism behavior.
 Subsystem specifications own their concrete queue capacities, worker counts,

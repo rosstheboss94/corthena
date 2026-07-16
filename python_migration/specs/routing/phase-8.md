@@ -2,11 +2,11 @@
 
 Non-authoritative navigation aid; canonical behavior remains in linked specs.
 
-- Required: `AGENTS.md`, `roadmap.md`, `frontend/workspace-jobs.md`,
-  `frontend/workspace-results.md`, `frontend/foundation-async-effects.md`,
+- Required: `AGENTS.md`, `roadmap.md`, `ui/workspace-jobs.md`,
+  `ui/workspace-results.md`, `ui/foundation-async-effects.md`,
   `training-runtime.md`, `evaluation.md`, `quality-common.md`,
   `quality-concurrency.md`.
-- Conditional: `api.md` for DTO/process contracts; `frontend/visualization.md`
+- Conditional: `api.md` for DTO/process contracts; `ui/visualization.md`
   for chart/table work; `technology-stack.md` for dependencies.
 - Code: client, state/actions/effects, simulator, Jobs/Results panels,
   checkpoint and virtual-table paths, and tests.

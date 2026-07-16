@@ -46,4 +46,4 @@ security scans, and compatibility with the screenshot and behavioral baseline.
 - [Technology stack](../technology-stack.md)
 - [System architecture](../system-architecture.md)
 - [Quality](../quality.md)
-- [Frontend foundation](../frontend/foundation.md)
+- [UI foundation](../ui/foundation.md)

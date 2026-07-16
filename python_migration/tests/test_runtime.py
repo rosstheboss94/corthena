@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import asdict
 
 import pytest
 
-from corthena.compatibility import runtime
+from corthena.compatibility.runtime import regular_cpython as runtime
+from corthena.compatibility.runtime.protocol import (
+    NativeImportProbeProtocol,
+    RuntimeProbeProtocol,
+)
+
+RUNTIME_PROBE: RuntimeProbeProtocol = runtime.RegularCpythonRuntimeProbe()
+NATIVE_IMPORT_PROBE: NativeImportProbeProtocol = runtime.RegularCpythonRuntimeProbe()
 
 
 def _configure_supported_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -25,17 +33,17 @@ def test_free_threaded_cpython_is_rejected(monkeypatch: pytest.MonkeyPatch) -> N
     with pytest.raises(
         runtime.UnsupportedRuntimeError, match="free-threaded CPython is unsupported"
     ):
-        runtime.probe_runtime("test")
+        RUNTIME_PROBE.probe("test")
 
 
 def test_supported_runtime_is_healthy(monkeypatch: pytest.MonkeyPatch) -> None:
     _configure_supported_runtime(monkeypatch)
-    capabilities = runtime.probe_runtime("test", process_count=2)
+    capabilities = RUNTIME_PROBE.probe("test", process_count=2)
     assert capabilities.status == "healthy"
     assert capabilities.process_count == 2
     assert capabilities.python_abi == runtime.EXPECTED_ABI
-    assert "gil_enabled" not in capabilities.health_payload()
-    assert "free_threaded_build" not in capabilities.health_payload()
+    assert "gil_enabled" not in asdict(capabilities)
+    assert "free_threaded_build" not in asdict(capabilities)
 
 
 @pytest.mark.skipif(
@@ -43,5 +51,5 @@ def test_supported_runtime_is_healthy(monkeypatch: pytest.MonkeyPatch) -> None:
     reason="exact runtime assertion belongs to the CPython 3.14.2 gate",
 )
 def test_configured_runtime_is_regular_cpython() -> None:
-    capabilities = runtime.probe_runtime("test")
+    capabilities = RUNTIME_PROBE.probe("test")
     assert capabilities.python_abi == runtime.EXPECTED_ABI

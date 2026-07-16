@@ -19,8 +19,8 @@ future-data leakage prevention, or auditability.
 3. Port the Raylib shell with the same workspace tabs, dock state, preferences,
    layouts, input handling, simulator client boundary, and screenshot
    scenarios.
-4. Port frontend state, effects, charts, tables, linked views, and workspace
-   workflows behind the same `FrontendClient` concept.
+4. Port ui state, effects, charts, tables, linked views, and workspace
+   workflows behind the same `UIClient` concept.
 5. Port coordinator contracts, DTO validators, event stream, health, process
    launch, cancellation, and reconciliation.
 6. Port data import, catalog revisions, feature/target materialization,
@@ -40,7 +40,7 @@ future-data leakage prevention, or auditability.
 | coordinator entry point | `corthena.coordinator.__main__` or `corthena-coordinator` script |
 | worker entry point | `corthena.worker.__main__` or `corthena-worker` script |
 | research CLI entry point | `corthena.cli.__main__` or `corthena` script |
-| frontend modules | `corthena.frontend...` |
+| ui modules | `corthena.ui...` |
 | workstation application modules | `corthena.app.workstation...` |
 | simulator modules | `corthena.simulator...` |
 | `client` package concept | `corthena.client` |

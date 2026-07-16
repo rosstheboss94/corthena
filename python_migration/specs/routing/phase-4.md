@@ -5,14 +5,14 @@ Non-authoritative navigation aid; canonical behavior remains in linked specs.
 ## Read first
 
 - Required: `AGENTS.md`, `design-pattern.md`, Phase 4 in `roadmap.md`,
-  `frontend/foundation.md`, `frontend/foundation-shell-state.md`,
-  `frontend/foundation-async-effects.md`, `frontend/foundation-persistence.md`,
-  `frontend/raylib-visual-system.md`, `migration-baseline.md`,
+  `ui/foundation.md`, `ui/foundation-shell-state.md`,
+  `ui/foundation-async-effects.md`, `ui/foundation-persistence.md`,
+  `ui/raylib-visual-system.md`, `migration-baseline.md`,
   `quality-common.md`, `quality-concurrency.md`, and
   `quality-visualization.md`.
 - Conditional: `technology-stack.md` for dependency or tooling changes;
   `api.md` for deliberate public or process-boundary changes; and
-  `frontend/visualization.md` only to enforce the Phase 5 exclusion.
+  `ui/visualization.md` only to enforce the Phase 5 exclusion.
 - Legacy parity references: `internal/frontend/docking/`,
   `internal/frontend/controls/`, `internal/frontend/layouts/`,
   `internal/frontend/preferences/`, the layout and preference workers under

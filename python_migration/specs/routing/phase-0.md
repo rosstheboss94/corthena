@@ -5,9 +5,9 @@ Non-authoritative navigation aid; canonical behavior remains in linked specs.
 - Required: `AGENTS.md`, Phase 0 in `roadmap.md`, `design-pattern.md`,
   `python-migration.md`, `technology-stack.md`, `quality.md`,
   `quality-common.md`, `system-architecture.md`,
-  `decisions/0008-regular-cpython-concurrency.md`, `frontend/foundation.md`,
+  `decisions/0008-regular-cpython-concurrency.md`, `ui/foundation.md`,
   and `api.md`.
-- Conditional: read the focused frontend, API, or quality specification when
+- Conditional: read the focused ui, API, or quality specification when
   the compatibility evidence exercises its owned behavior.
 - Scope: collect Windows compatibility-spike evidence for exact Windows AMD64
   regular CPython `3.14.2`, its `cp314` ABI, `uv`,

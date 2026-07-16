@@ -79,7 +79,7 @@ cancellation boundaries, and failure scenarios from each owning subsystem.
 
 Apply these concurrency obligations to coordinator, workers, client, scheduler,
 cache, adapters, reducers, imports, jobs, checkpoints, API/event reconciliation,
-frontend effects, and pause-on-close. Combine them with the owning subsystem's
+ui effects, and pause-on-close. Combine them with the owning subsystem's
 hand-calculated tables, DTO/message/manifest property tests,
 interrupt/resume and corrupt/partial/incompatible-version cases, leakage-safety
 tests, crash/stale-heartbeat cases, and immutable registry/inference behavior.

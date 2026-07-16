@@ -6,11 +6,11 @@ import argparse
 from collections.abc import Sequence
 
 from corthena.compatibility.runtime import probe_runtime
-from corthena.frontend import LaunchConfig, launch
+from corthena.ui import LaunchConfig, launch
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Validate the runtime and delegate immediately to frontend startup."""
+    """Validate the runtime and delegate immediately to UI startup."""
     parser = argparse.ArgumentParser(prog="corthena-workstation")
     parser.add_argument("--hidden", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--smoke-frames", type=int, help=argparse.SUPPRESS)
