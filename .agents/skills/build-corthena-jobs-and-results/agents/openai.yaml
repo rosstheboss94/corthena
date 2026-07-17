@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Corthena Jobs and Results"
+  short_description: "Implement Phase 8 job and result workflows"
+  default_prompt: "Use $build-corthena-jobs-and-results to implement a Phase 8 Jobs or Results workflow."

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from corthena.ui.data_experiments.models import Phase7LoadState, Phase7WorkspaceState
 from corthena.ui.docking import (
     DockPosition,
     Split,
@@ -13,6 +14,16 @@ from corthena.ui.docking import (
     calculate_geometry,
 )
 from corthena.ui.docking import Rect as DockRect
+from corthena.ui.jobs_results.models import (
+    JobDetail,
+    JobsWorkspaceState,
+    ResultsWorkspaceState,
+    RunComparison,
+)
+from corthena.ui.models_inference.models import (
+    InferenceWorkspaceState,
+    ModelsWorkspaceState,
+)
 from corthena.ui.research.models import ResearchGroupState
 from corthena.ui.state import (
     ActivateDockPanel,
@@ -171,6 +182,11 @@ class ShellView:
     critical_error: str | None
     research_group: ResearchGroupState | None
     research_groups: tuple[tuple[str, ResearchGroupState], ...]
+    phase7_workspace: Phase7WorkspaceState | None
+    phase8_workspace: JobsWorkspaceState | ResultsWorkspaceState | None
+    selected_job: JobDetail | None
+    run_comparison: RunComparison | None
+    phase9_workspace: ModelsWorkspaceState | InferenceWorkspaceState | None
     render_order: tuple[ShellRegion, ...] = SHELL_RENDER_ORDER
 
 
@@ -246,6 +262,53 @@ def project_shell(
         max(0, content_bounds.height - 16 * scale),
     )
     dock_stacks, dock_splitters = _project_docks(layout, dock_host, scale)
+    phase7 = (
+        state.data_experiments.data
+        if state.workspace is Workspace.DATA
+        else state.data_experiments.experiments
+        if state.workspace is Workspace.EXPERIMENTS
+        else None
+    )
+    phase7_datasets = (
+        tuple(
+            DatasetRowView(
+                item.name,
+                item.status,
+                str(item.row_count),
+                str(item.revision),
+                item.dataset_id == phase7.selected_dataset_id,
+            )
+            for item in phase7.snapshot.catalog
+        )
+        if phase7 is not None and phase7.snapshot is not None
+        else ()
+    )
+    phase8 = (
+        state.jobs_results.jobs
+        if state.workspace is Workspace.JOBS
+        else state.jobs_results.results
+        if state.workspace is Workspace.RESULTS
+        else None
+    )
+    phase9 = (
+        state.models_inference.models
+        if state.workspace is Workspace.MODELS
+        else state.models_inference.inference
+        if state.workspace is Workspace.INFERENCE
+        else None
+    )
+    selected_job = (
+        next(
+            (
+                item
+                for item in state.jobs_results.jobs.snapshot.jobs
+                if item.summary.job_id == state.jobs_results.jobs.selected_job_id
+            ),
+            None,
+        )
+        if state.jobs_results.jobs.snapshot is not None
+        else None
+    )
     return ShellView(
         viewport=Rect(0, 0, width, height),
         scale=scale,
@@ -257,7 +320,8 @@ def project_shell(
             ComponentView("Catalog", "2 demo datasets", (76, 195, 138, 255)),
             ComponentView("Scheduler", "simulated queue", (216, 180, 90, 255)),
         ),
-        datasets=(
+        datasets=phase7_datasets
+        or (
             DatasetRowView("US equities daily", "ready", "958328", "16", True),
             DatasetRowView("Index watchlist hourly", "validation", "219733", "7", False),
         ),
@@ -274,8 +338,12 @@ def project_shell(
         date_range="2020-07-09 to 2026-07-09",
         run_id="run-demo-complete",
         model_id="model-demo-champion",
-        connection="connected",
-        cache="96 MB gen 69",
+        connection=(
+            "degraded"
+            if phase7 is not None and phase7.state is Phase7LoadState.DEGRADED
+            else "connected"
+        ),
+        cache="96 MB gen 15" if phase7 is not None else "96 MB gen 69",
         cpu_slots=10,
         worker_detail="workers pending",
         fps=fps,
@@ -295,6 +363,11 @@ def project_shell(
         )
         if state.workspace is Workspace.RESEARCH
         else (),
+        phase7_workspace=phase7,
+        phase8_workspace=phase8,
+        selected_job=selected_job,
+        run_comparison=state.jobs_results.results.comparison,
+        phase9_workspace=phase9,
     )
 
 
@@ -379,7 +452,12 @@ def _project_docks(
             max(0, bounds.width - 2 * scale),
             max(0, bounds.height - header_height - scale),
         )
-        tab_right = bounds.x + bounds.width - min(335 * scale, bounds.width * 0.34)
+        button_size = min(20 * scale, header.height)
+        button_gap = 2 * scale
+        tab_right = bounds.x + bounds.width - 3 * scale
+        tab_right -= button_size + button_gap
+        tab_right -= button_size + button_gap
+        tab_right -= min(96 * scale, max(0, header.width * 0.28)) + button_gap
         tab_width = max(
             56 * scale,
             min(132 * scale, (tab_right - bounds.x - 3 * scale) / len(stack.panels)),

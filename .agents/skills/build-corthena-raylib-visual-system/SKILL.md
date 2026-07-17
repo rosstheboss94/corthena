@@ -12,7 +12,7 @@ without changing unrelated visuals or moving behavior into rendering code.
 
 1. Read `python_migration/AGENTS.md`,
    `python_migration/specs/design-pattern.md`, and
-   `python_migration/specs/frontend/raylib-visual-system.md` completely.
+   `python_migration/specs/ui/raylib-visual-system.md` completely.
 2. Read the owning shell, workspace, visualization, and quality specifications
    selected by `AGENTS.md`. Read the applicable canonical PNG manifest under
    `internal/app/workstation/testdata/`.

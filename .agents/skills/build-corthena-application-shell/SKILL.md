@@ -1,6 +1,6 @@
 ---
 name: build-corthena-application-shell
-description: Build Corthena Phase 3's deterministic visual application shell over the completed Phase 1 lifecycle and Phase 2 frontend state, effects, client, and simulator architecture. Use for implementing or changing Phase 3 shell composition, workspace-tab navigation, global context/status presentation, the central non-docking host, status bar, inert overlays, or the Phase 3 hidden-launch capture lifecycle; do not use for Phase 1 scaffolding, Phase 2 state architecture, or Phase 4 docking and persistence.
+description: Build Corthena Phase 3's deterministic visual application shell over the completed Phase 1 lifecycle and Phase 2 ui state, effects, client, and simulator architecture. Use for implementing or changing Phase 3 shell composition, workspace-tab navigation, global context/status presentation, the central non-docking host, status bar, inert overlays, or the Phase 3 hidden-launch capture lifecycle; do not use for Phase 1 scaffolding, Phase 2 state architecture, or Phase 4 docking and persistence.
 ---
 
 # Build the Corthena Application Shell
@@ -12,7 +12,7 @@ description: Build Corthena Phase 3's deterministic visual application shell ove
 2. Treat the living specs and manifest-owned Go PNG as canonical. Update the
    owning spec first if behavior or a public contract changes.
 3. Preserve the existing Phase 1 lifecycle and Phase 2 typed state, reducer,
-   `FrontendClient`, effects, simulator, generation, cancellation, and drain
+   `UIClient`, effects, simulator, generation, cancellation, and drain
    boundaries. Do not duplicate or bypass them.
 
 ## Compose the fixed shell

@@ -8,6 +8,7 @@ from __future__ import annotations
 import threading
 from dataclasses import replace
 from datetime import datetime
+from itertools import pairwise
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -25,8 +26,50 @@ from corthena.ui.controls import (
     WidgetId,
     route,
 )
+from corthena.ui.data_experiments.actions import (
+    EditExperimentDraft,
+    RequestDataImport,
+    RequestDraftEvaluation,
+    RequestDraftSave,
+    RequestPhase7,
+    RequestSubmission,
+    SetPhase7Scenario,
+)
+from corthena.ui.data_experiments.models import (
+    AdjustmentPolicy,
+    DraftSaveRequest,
+    ImportMode,
+    ImportRequest,
+    Phase7LoadState,
+    Phase7Request,
+    Phase7Scenario,
+    Phase7Workspace,
+    Phase7WorkspaceState,
+    SourceKind,
+    SubmissionRequest,
+)
 from corthena.ui.docking import DockPosition
 from corthena.ui.docking import Rect as ControlRect
+from corthena.ui.jobs_results.actions import RequestJobCommand, RequestPhase8, SetPhase8Scenario
+from corthena.ui.jobs_results.models import (
+    JobCommand,
+    JobCommandKind,
+    JobState,
+    JobsWorkspaceState,
+    MetricPartition,
+    Phase8LoadState,
+    Phase8Request,
+    Phase8Scenario,
+    Phase8Workspace,
+)
+from corthena.ui.models_inference.actions import RequestPhase9, SetPhase9Scenario
+from corthena.ui.models_inference.models import (
+    ModelsWorkspaceState,
+    Phase9LoadState,
+    Phase9Request,
+    Phase9Scenario,
+    Phase9Workspace,
+)
 from corthena.ui.native.models import CapturedFrame, FrameMetrics, WindowSize
 from corthena.ui.phase5b import (
     ChartAction,
@@ -608,6 +651,9 @@ class RaylibUIAdapter:
         mouse_x = float(rl.get_mouse_x())
         mouse_y = float(rl.get_mouse_y())
         actions.extend(self._research_actions(view, rl, mouse_x, mouse_y))
+        actions.extend(self._phase7_actions(view, rl, control_down))
+        actions.extend(self._phase8_actions(view, rl, mouse_x, mouse_y))
+        actions.extend(self._phase9_actions(view, rl))
         self._dock_targets = ()
         if self._dock_drag is not None:
             _, start_x, start_y = self._dock_drag
@@ -692,6 +738,245 @@ class RaylibUIAdapter:
                         )
                 self._dock_targets = ()
         return actions
+
+    def _phase8_actions(
+        self, view: ShellView, rl: object, mouse_x: float, mouse_y: float
+    ) -> tuple[UIAction, ...]:
+        current = view.phase8_workspace
+        if current is None:
+            return ()
+        if current.state is Phase8LoadState.IDLE:
+            workspace = (
+                Phase8Workspace.JOBS
+                if isinstance(current, JobsWorkspaceState)
+                else Phase8Workspace.RESULTS
+            )
+            return (
+                RequestPhase8(
+                    Phase8Request(
+                        f"phase8-{workspace.value}-00000000000000000001",
+                        1,
+                        workspace,
+                        current.scenario,
+                    )
+                ),
+            )
+        if rl.is_key_pressed(rl.KEY_S):
+            scenarios = (
+                (
+                    Phase8Scenario.JOBS_SUCCESS,
+                    Phase8Scenario.JOBS_PAUSE_RESUME,
+                    Phase8Scenario.JOBS_CANCELLATION,
+                    Phase8Scenario.JOBS_INTERRUPTION,
+                    Phase8Scenario.JOBS_FAILURE,
+                    Phase8Scenario.JOBS_CHECKPOINT_INCOMPATIBLE,
+                )
+                if isinstance(current, JobsWorkspaceState)
+                else (
+                    Phase8Scenario.RESULTS_NORMAL,
+                    Phase8Scenario.RESULTS_LOADING,
+                    Phase8Scenario.RESULTS_FAILURE,
+                    Phase8Scenario.RESULTS_DEGRADED,
+                    Phase8Scenario.RESULTS_RECOVERED,
+                    Phase8Scenario.RESULTS_EMPTY,
+                )
+            )
+            scenario = scenarios[(scenarios.index(current.scenario) + 1) % len(scenarios)]
+            workspace = (
+                Phase8Workspace.JOBS
+                if isinstance(current, JobsWorkspaceState)
+                else Phase8Workspace.RESULTS
+            )
+            return (SetPhase8Scenario(workspace, scenario),)
+        selected = view.selected_job
+        if not isinstance(current, JobsWorkspaceState) or selected is None:
+            return ()
+        if selected.summary.state is JobState.RUNNING:
+            allowed = (JobCommandKind.PAUSE, JobCommandKind.CANCEL)
+        elif selected.summary.state in {JobState.PAUSED, JobState.INTERRUPTED}:
+            allowed = (JobCommandKind.RESUME, JobCommandKind.CANCEL)
+        elif selected.summary.state is JobState.QUEUED:
+            allowed = (JobCommandKind.CANCEL,)
+        else:
+            allowed = ()
+        chosen: JobCommandKind | None = None
+        keys = (
+            (JobCommandKind.PAUSE, rl.KEY_P),
+            (JobCommandKind.RESUME, rl.KEY_R),
+            (JobCommandKind.CANCEL, rl.KEY_C),
+        )
+        for kind, key in keys:
+            if kind in allowed and rl.is_key_pressed(key):
+                chosen = kind
+                break
+        if chosen is None and rl.is_mouse_button_pressed(rl.MOUSE_BUTTON_LEFT):
+            progress = next(
+                (stack for stack in view.dock_stacks if stack.active_panel_id == "jobs-progress"),
+                None,
+            )
+            if progress is not None:
+                button_y = progress.body_bounds.y + 106 * view.scale
+                button_x = progress.body_bounds.x + 14 * view.scale
+                for index, kind in enumerate(allowed):
+                    bounds = ShellRect(
+                        button_x + index * 82 * view.scale,
+                        button_y,
+                        72 * view.scale,
+                        22 * view.scale,
+                    )
+                    if self._inside(bounds, mouse_x, mouse_y):
+                        chosen = kind
+                        break
+        if chosen is None:
+            return ()
+        identity = f"{selected.summary.job_id}-{chosen.value}-g{current.generation:020d}"
+        return (
+            RequestJobCommand(
+                JobCommand(
+                    identity,
+                    f"correlation-{identity}",
+                    current.generation,
+                    selected.summary.job_id,
+                    chosen,
+                )
+            ),
+        )
+
+    def _phase9_actions(self, view: ShellView, rl: object) -> tuple[UIAction, ...]:
+        current = view.phase9_workspace
+        if current is None:
+            return ()
+        workspace = (
+            Phase9Workspace.MODELS
+            if isinstance(current, ModelsWorkspaceState)
+            else Phase9Workspace.INFERENCE
+        )
+        if current.state is Phase9LoadState.IDLE:
+            return (
+                RequestPhase9(
+                    Phase9Request(
+                        f"phase9-{workspace.value}-00000000000000000001",
+                        1,
+                        workspace,
+                        current.scenario,
+                    )
+                ),
+            )
+        if not rl.is_key_pressed(rl.KEY_S):
+            return ()
+        scenarios = (
+            (
+                Phase9Scenario.MODELS_NORMAL,
+                Phase9Scenario.MODELS_LOADING,
+                Phase9Scenario.MODELS_EMPTY,
+                Phase9Scenario.MODELS_FAILURE,
+                Phase9Scenario.MODELS_DEGRADED,
+                Phase9Scenario.MODELS_RECOVERED,
+            )
+            if workspace is Phase9Workspace.MODELS
+            else (
+                Phase9Scenario.INFERENCE_NORMAL,
+                Phase9Scenario.INFERENCE_LOADING,
+                Phase9Scenario.INFERENCE_LATEST,
+                Phase9Scenario.INFERENCE_INCOMPATIBLE,
+                Phase9Scenario.INFERENCE_EMPTY,
+                Phase9Scenario.INFERENCE_FAILURE,
+                Phase9Scenario.INFERENCE_DEGRADED,
+                Phase9Scenario.INFERENCE_RECOVERED,
+            )
+        )
+        scenario = scenarios[(scenarios.index(current.scenario) + 1) % len(scenarios)]
+        return (SetPhase9Scenario(workspace, scenario),)
+
+    def _phase7_actions(
+        self, view: ShellView, rl: object, control_down: bool
+    ) -> tuple[UIAction, ...]:
+        current = view.phase7_workspace
+        if current is None:
+            return ()
+        selected = next(tab.action.workspace for tab in view.tabs if tab.selected)
+        workspace = (
+            Phase7Workspace.DATA if selected.value == "data" else Phase7Workspace.EXPERIMENTS
+        )
+        if current.state is Phase7LoadState.IDLE:
+            return (
+                RequestPhase7(
+                    Phase7Request(
+                        f"phase7-{workspace.value}-00000000000000000001",
+                        1,
+                        workspace,
+                    )
+                ),
+            )
+        scenarios = (
+            Phase7Scenario.NORMAL,
+            Phase7Scenario.LOADING,
+            Phase7Scenario.FAILURE,
+            Phase7Scenario.DEGRADED,
+            Phase7Scenario.RECOVERED,
+        )
+        if rl.is_key_pressed(rl.KEY_S):
+            scenario = scenarios[(scenarios.index(current.scenario) + 1) % len(scenarios)]
+            return (SetPhase7Scenario(workspace, scenario),)
+        if current.snapshot is None:
+            return ()
+        if workspace is Phase7Workspace.DATA and rl.is_key_pressed(rl.KEY_I):
+            entry = current.snapshot.catalog[0]
+            generation = current.generation
+            return (
+                RequestDataImport(
+                    ImportRequest(
+                        f"import-command-{generation:020d}",
+                        f"import-{generation:020d}",
+                        generation,
+                        entry.dataset_id,
+                        entry.revision,
+                        SourceKind.CSV,
+                        "demo-bars.csv",
+                        entry.symbols,
+                        entry.interval,
+                        AdjustmentPolicy.SPLIT_AND_DIVIDEND,
+                        ImportMode.APPEND,
+                    )
+                ),
+            )
+        if workspace is Phase7Workspace.EXPERIMENTS:
+            draft = current.draft
+            if draft is None:
+                return ()
+            if rl.is_key_pressed(rl.KEY_E):
+                edited = replace(
+                    draft, revision=draft.revision + 1, estimator_count=draft.estimator_count + 10
+                )
+                return (
+                    EditExperimentDraft(edited),
+                    RequestDraftEvaluation(
+                        f"evaluate-{current.generation:020d}", current.generation, edited
+                    ),
+                )
+            if control_down and rl.is_key_pressed(rl.KEY_S):
+                return (
+                    RequestDraftSave(
+                        DraftSaveRequest(
+                            f"save-{current.generation:020d}",
+                            current.generation,
+                            draft,
+                            current.saved_revision,
+                        )
+                    ),
+                )
+            if control_down and rl.is_key_pressed(rl.KEY_ENTER):
+                return (
+                    RequestSubmission(
+                        SubmissionRequest(
+                            f"submit-{current.generation:020d}",
+                            f"submit-command-{current.generation:020d}",
+                            current.generation,
+                            draft,
+                        )
+                    ),
+                )
+        return ()
 
     def _draw_dock_targets(self, rl: object) -> None:
         hot = next((target for target in self._dock_targets if target.hot), None)
@@ -918,58 +1203,72 @@ class RaylibUIAdapter:
                 (214, 220, 229, 255),
             )
             y += 24 * scale
+        bottom = bounds.y + bounds.height
+        global_y = bottom - 104 * scale
+        show_global = y + 10 * scale <= global_y
+        component_bottom = global_y if show_global else bottom
         component_y = y + 10 * scale
-        self._text(
-            rl,
-            self._inter_font,
-            "Component Status",
-            10 * scale,
-            component_y,
-            11,
-            scale,
-            (126, 136, 150, 255),
-        )
-        component_y += 24 * scale
-        for component in view.components:
-            self._rect(
-                rl, 10 * scale, component_y, left_width - 20 * scale, 24 * scale, (23, 28, 34, 255)
-            )
-            self._rect(rl, 10 * scale, component_y, 3 * scale, 24 * scale, component.color)
+        if component_y + 54 * scale <= component_bottom:
             self._text(
                 rl,
                 self._inter_font,
-                component.title,
-                20 * scale,
-                component_y + 5 * scale,
+                "Component Status",
+                10 * scale,
+                component_y,
                 11,
-                scale,
-                (214, 220, 229, 255),
-            )
-            self._text(
-                rl,
-                self._inter_font,
-                component.detail,
-                10 * scale + (left_width - 20 * scale) * 0.52,
-                component_y + 5 * scale,
-                10,
                 scale,
                 (126, 136, 150, 255),
             )
-            component_y += 30 * scale
-        global_y = bounds.y + bounds.height - 104 * scale
-        self._text(
-            rl,
-            self._inter_font,
-            "Global Context",
-            10 * scale,
-            global_y,
-            11,
-            scale,
-            (126, 136, 150, 255),
-        )
-        self._small_line(rl, 10 * scale, global_y + 24 * scale, "Dataset", view.dataset_id, scale)
-        self._small_line(rl, 10 * scale, global_y + 44 * scale, "Run", view.run_id, scale)
-        self._small_line(rl, 10 * scale, global_y + 64 * scale, "Model", view.model_id, scale)
+            component_y += 24 * scale
+            for component in view.components:
+                if component_y + 30 * scale > component_bottom:
+                    break
+                self._rect(
+                    rl,
+                    10 * scale,
+                    component_y,
+                    left_width - 20 * scale,
+                    24 * scale,
+                    (23, 28, 34, 255),
+                )
+                self._rect(rl, 10 * scale, component_y, 3 * scale, 24 * scale, component.color)
+                self._text(
+                    rl,
+                    self._inter_font,
+                    component.title,
+                    20 * scale,
+                    component_y + 5 * scale,
+                    11,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                self._text(
+                    rl,
+                    self._inter_font,
+                    component.detail,
+                    10 * scale + (left_width - 20 * scale) * 0.52,
+                    component_y + 5 * scale,
+                    10,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+                component_y += 30 * scale
+        if show_global:
+            self._text(
+                rl,
+                self._inter_font,
+                "Global Context",
+                10 * scale,
+                global_y,
+                11,
+                scale,
+                (126, 136, 150, 255),
+            )
+            self._small_line(
+                rl, 10 * scale, global_y + 24 * scale, "Dataset", view.dataset_id, scale
+            )
+            self._small_line(rl, 10 * scale, global_y + 44 * scale, "Run", view.run_id, scale)
+            self._small_line(rl, 10 * scale, global_y + 64 * scale, "Model", view.model_id, scale)
 
     def _draw_data_host(self, view: ShellView, rl: object) -> None:
         scale = view.scale
@@ -1077,6 +1376,45 @@ class RaylibUIAdapter:
                     data_h,
                     scale,
                 )
+            elif view.phase7_workspace is not None and selected_panel.panel_id.startswith(
+                ("data-", "experiments-")
+            ):
+                self._draw_phase7_panel(
+                    rl,
+                    view,
+                    selected_panel.panel_id,
+                    data_x,
+                    data_y,
+                    data_w,
+                    data_h,
+                    scale,
+                )
+            elif view.phase8_workspace is not None and selected_panel.panel_id.startswith(
+                ("jobs-", "results-")
+            ):
+                self._draw_phase8_panel(
+                    rl,
+                    view,
+                    selected_panel.panel_id,
+                    data_x,
+                    data_y,
+                    data_w,
+                    data_h,
+                    scale,
+                )
+            elif view.phase9_workspace is not None and selected_panel.panel_id.startswith(
+                ("models-", "inference-")
+            ):
+                self._draw_phase9_panel(
+                    rl,
+                    view,
+                    selected_panel.panel_id,
+                    data_x,
+                    data_y,
+                    data_w,
+                    data_h,
+                    scale,
+                )
             elif selected_panel.title == "Catalog":
                 self._draw_catalog(rl, view, data_x, data_y, data_w, data_h, scale)
             else:
@@ -1093,6 +1431,1116 @@ class RaylibUIAdapter:
                 )
         finally:
             rl.end_scissor_mode()
+
+    def _draw_phase9_panel(
+        self,
+        rl: object,
+        view: ShellView,
+        panel_id: str,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> None:
+        current = view.phase9_workspace
+        if current is None:
+            return
+        control_width = 174 * scale
+        control_x = x + width - control_width
+        self._rect(rl, control_x, y, control_width, 20 * scale, (23, 28, 34, 255))
+        self._outline(rl, control_x, y, control_width, 20 * scale, (37, 43, 51, 255))
+        scenario = current.scenario.value.removeprefix("models_").removeprefix("inference_")
+        self._text(
+            rl,
+            self._inter_font,
+            f"Scenario: {scenario}",
+            control_x + 6 * scale,
+            y + 5 * scale,
+            10,
+            scale,
+            (214, 220, 229, 255),
+        )
+        if current.state is Phase9LoadState.LOADING and not current.stale:
+            self._text(
+                rl,
+                self._inter_font,
+                "Preparing immutable model workflow...",
+                x,
+                y + 34 * scale,
+                11,
+                scale,
+                (126, 136, 150, 255),
+            )
+            return
+        if (
+            current.state
+            in {
+                Phase9LoadState.FAILED,
+                Phase9LoadState.CANCELLED,
+                Phase9LoadState.BUSY,
+            }
+            and not current.stale
+        ):
+            self._outline(rl, x, y + 28 * scale, width, 64 * scale, (239, 107, 115, 255))
+            self._text(
+                rl,
+                self._inter_font,
+                current.error or "Phase 9 request failed",
+                x + 12 * scale,
+                y + 44 * scale,
+                11,
+                scale,
+                (239, 107, 115, 255),
+            )
+            return
+        snapshot = current.snapshot
+        if snapshot is None:
+            return
+        content_y = y + 30 * scale
+        lines: list[tuple[str, str]] = []
+        if isinstance(current, ModelsWorkspaceState):
+            selected = next(
+                (item for item in snapshot.models if item.model_id == current.selected_model_id),
+                snapshot.models[0] if snapshot.models else None,
+            )
+            if panel_id == "models-registry":
+                lines = [(item.model_id, item.artifact.model_kind) for item in snapshot.models]
+            elif panel_id == "models-aliases":
+                lines = list(snapshot.aliases) + [
+                    (event.alias, f"{event.previous_model_id or '-'} -> {event.model_id}")
+                    for event in snapshot.alias_history[-4:]
+                ]
+            elif selected is not None and panel_id == "models-artifact":
+                lines = [
+                    (
+                        "Schema / engine",
+                        f"v{selected.artifact.schema_version} / {selected.artifact.engine_version}",
+                    ),
+                    ("Training cutoff", selected.artifact.training_cutoff.isoformat()),
+                    ("Fingerprint", selected.artifact.training_fingerprint[:20]),
+                    ("Build", selected.artifact.build_revision),
+                    ("Status", selected.artifact.status.value),
+                ]
+            elif selected is not None and panel_id == "models-importance":
+                lines = [
+                    (feature.name, f"{importance:.3f}")
+                    for feature, importance in zip(
+                        selected.features, selected.feature_importance, strict=True
+                    )
+                ]
+            elif selected is not None:
+                tree = selected.trees[current.selected_tree_index]
+                lines = [
+                    (
+                        f"Node {index}",
+                        "leaf"
+                        if left == -1
+                        else f"f{tree.feature[index]} <= {tree.threshold[index]:.4f}",
+                    )
+                    for index, left in enumerate(tree.left)
+                ]
+        else:
+            inference = current.inference
+            if panel_id == "inference-selector":
+                lines = [
+                    ("Model / alias", current.selected_model_or_alias),
+                    ("Dataset", "dataset-us-equities"),
+                    ("Mode", current.scenario.value.removeprefix("inference_")),
+                ]
+            elif panel_id == "inference-compatibility":
+                report = (
+                    inference.compatibility if inference is not None else snapshot.compatibility
+                )
+                lines = (
+                    [("Compatible", "yes" if report.compatible else "no")]
+                    + [(item.field, item.message) for item in report.issues]
+                    if report is not None
+                    else [("Status", "Awaiting selection")]
+                )
+            elif panel_id == "inference-rankings" and inference is not None:
+                lines = [
+                    (
+                        str(item.rank) if item.rank is not None else "-",
+                        (
+                            f"{item.prediction.symbol_id}  "
+                            + (
+                                str(item.prediction.score)
+                                if item.prediction.score is not None
+                                else "missing"
+                            )
+                        ),
+                    )
+                    for item in inference.rankings
+                ]
+            elif panel_id == "inference-distribution" and inference is not None:
+                distribution = inference.distribution
+                lines = (
+                    [
+                        (
+                            f"{distribution.edges[index]:.2f}-{distribution.edges[index + 1]:.2f}",
+                            str(count),
+                        )
+                        for index, count in enumerate(distribution.counts)
+                    ]
+                    if distribution is not None
+                    else []
+                )
+            elif panel_id == "inference-history":
+                lines = [
+                    (item.inference_id, item.checksum[:16] if item.checksum else "incompatible")
+                    for item in current.history
+                ]
+            elif panel_id == "inference-export":
+                lines = [
+                    ("State", current.export_state.value),
+                    (
+                        "Rows",
+                        str(current.export_result.row_count) if current.export_result else "-",
+                    ),
+                    (
+                        "Checksum",
+                        current.export_result.checksum[:20] if current.export_result else "-",
+                    ),
+                ]
+        for index, (label, value) in enumerate(lines[:10]):
+            row_y = content_y + index * 30 * scale
+            if index % 2:
+                self._rect(rl, x, row_y, width, 28 * scale, (23, 28, 34, 180))
+            self._text(
+                rl,
+                self._inter_font,
+                label,
+                x + 8 * scale,
+                row_y + 8 * scale,
+                10,
+                scale,
+                (214, 220, 229, 255),
+            )
+            self._text(
+                rl,
+                self._mono_font,
+                value,
+                x + width * 0.42,
+                row_y + 8 * scale,
+                9,
+                scale,
+                (126, 136, 150, 255),
+            )
+
+    def _draw_phase8_panel(
+        self,
+        rl: object,
+        view: ShellView,
+        panel_id: str,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> None:
+        current = view.phase8_workspace
+        if current is None:
+            return
+        control_width = 152 * scale
+        control_x = x + width - control_width
+        self._rect(rl, control_x, y, control_width, 20 * scale, (23, 28, 34, 255))
+        self._outline(rl, control_x, y, control_width, 20 * scale, (37, 43, 51, 255))
+        self._text(
+            rl,
+            self._inter_font,
+            f"Scenario: {current.scenario.value.removeprefix('jobs_').removeprefix('results_')}",
+            control_x + 6 * scale,
+            y + 5 * scale,
+            10,
+            scale,
+            (214, 220, 229, 255),
+        )
+        if current.state is Phase8LoadState.LOADING and not current.stale:
+            self._text(
+                rl,
+                self._inter_font,
+                "Loading immutable workflow state...",
+                x,
+                y + 30 * scale,
+                11,
+                scale,
+                (126, 136, 150, 255),
+            )
+            return
+        if (
+            current.state
+            in {
+                Phase8LoadState.FAILED,
+                Phase8LoadState.CANCELLED,
+                Phase8LoadState.BUSY,
+            }
+            and not current.stale
+        ):
+            self._outline(rl, x, y + 28 * scale, width, 72 * scale, (239, 107, 115, 255))
+            self._text(
+                rl,
+                self._inter_font,
+                current.error or "Phase 8 request failed",
+                x + 12 * scale,
+                y + 42 * scale,
+                11,
+                scale,
+                (239, 107, 115, 255),
+            )
+            return
+        snapshot = current.snapshot
+        if snapshot is None:
+            return
+        content_y = y + 28 * scale
+        if isinstance(current, JobsWorkspaceState):
+            self._draw_phase8_jobs_panel(
+                rl, view, panel_id, snapshot.jobs, x, content_y, width, height, scale
+            )
+        else:
+            self._draw_phase8_results_panel(
+                rl, view, panel_id, snapshot.runs, x, content_y, width, height, scale
+            )
+
+    def _draw_phase8_jobs_panel(
+        self,
+        rl: object,
+        view: ShellView,
+        panel_id: str,
+        jobs: tuple[object, ...],
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> None:
+        selected = view.selected_job
+        if panel_id == "jobs-queue":
+            columns = (("Job", 0.0), ("State", 0.50), ("Stage", 0.68), ("%", 0.90))
+            self._rect(rl, x, y, width, 24 * scale, (23, 28, 34, 255))
+            for label, ratio in columns:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    label,
+                    x + width * ratio + 6 * scale,
+                    y + 7 * scale,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+            row_height = 25 * scale
+            visible = max(0, min(len(jobs), int((height - 56 * scale) / row_height)))
+            for index, raw in enumerate(jobs[:visible]):
+                detail = raw
+                summary = detail.summary
+                row_y = y + 24 * scale + index * row_height
+                self._outline(rl, x, row_y, width, row_height, (37, 43, 51, 255))
+                values = (
+                    summary.job_id,
+                    summary.state.value,
+                    summary.stage_title,
+                    str(round(summary.progress * 100)),
+                )
+                for value, (_, ratio) in zip(values, columns, strict=True):
+                    self._text(
+                        rl,
+                        self._mono_font,
+                        value[:30],
+                        x + width * ratio + 6 * scale,
+                        row_y + 7 * scale,
+                        9,
+                        scale,
+                        (214, 220, 229, 255),
+                    )
+            return
+        if selected is None:
+            self._text(
+                rl, self._inter_font, "No job selected", x, y, 11, scale, (126, 136, 150, 255)
+            )
+            return
+        if panel_id == "jobs-progress":
+            allowed = []
+            if selected.summary.state.value == "running":
+                allowed = ["pause", "cancel"]
+            elif selected.summary.state.value in {"paused", "interrupted"}:
+                allowed = ["resume", "cancel"]
+            elif selected.summary.state.value == "queued":
+                allowed = ["cancel"]
+            self._text(
+                rl,
+                self._mono_font,
+                f"{selected.summary.state.value}  {selected.summary.stage_title}",
+                x,
+                y,
+                10,
+                scale,
+                (60, 200, 200, 255),
+            )
+            for index, label in enumerate(allowed):
+                button_x = x + index * 82 * scale
+                self._rect(rl, button_x, y + 20 * scale, 72 * scale, 22 * scale, (23, 28, 34, 255))
+                self._outline(
+                    rl, button_x, y + 20 * scale, 72 * scale, 22 * scale, (37, 43, 51, 255)
+                )
+                self._text(
+                    rl,
+                    self._inter_font,
+                    label,
+                    button_x + 8 * scale,
+                    y + 26 * scale,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+            for index, stage in enumerate(selected.stages):
+                row_y = y + (48 + index * 38) * scale
+                self._text(
+                    rl, self._inter_font, stage.title, x, row_y, 10, scale, (214, 220, 229, 255)
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    stage.state.value,
+                    x + width - 92 * scale,
+                    row_y,
+                    9,
+                    scale,
+                    (60, 200, 200, 255),
+                )
+                self._outline(rl, x, row_y + 18 * scale, width, 7 * scale, (37, 43, 51, 255))
+                self._rect(
+                    rl,
+                    x,
+                    row_y + 18 * scale,
+                    width * stage.completed_units / stage.total_units,
+                    7 * scale,
+                    (60, 200, 200, 255),
+                )
+        elif panel_id == "jobs-metrics":
+            for index, metric in enumerate(selected.metrics):
+                row_y = y + index * 26 * scale
+                self._text(
+                    rl, self._inter_font, metric.name, x, row_y, 10, scale, (60, 200, 200, 255)
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"{metric.value:.4f}",
+                    x + width - 90 * scale,
+                    row_y,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+        elif panel_id in {"jobs-workers", "jobs-processes"}:
+            worker = selected.worker
+            lease = selected.lease
+            rows = (
+                ("Worker", worker.worker_id if worker else "not started"),
+                ("PID", str(worker.process_id) if worker else "-"),
+                ("State", worker.detail if worker else selected.summary.state.value),
+                ("CPU lease", f"{lease.active_slots}/{lease.granted_slots}" if lease else "queued"),
+            )
+            for index, (label, value) in enumerate(rows):
+                self._text(
+                    rl,
+                    self._inter_font,
+                    label,
+                    x,
+                    y + index * 25 * scale,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    value,
+                    x + 76 * scale,
+                    y + index * 25 * scale,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+        elif panel_id == "jobs-checkpoints":
+            checkpoint = selected.checkpoint
+            rows = (
+                ("Checkpoint", checkpoint.checkpoint_id or "not available"),
+                ("Compatibility", checkpoint.compatibility.value),
+                ("Committed", str(checkpoint.committed_sequence)),
+                ("Previous valid", checkpoint.previous_valid_checkpoint_id or "none"),
+                ("Detail", checkpoint.detail),
+            )
+            for index, (label, value) in enumerate(rows):
+                self._text(
+                    rl,
+                    self._inter_font,
+                    label,
+                    x,
+                    y + index * 24 * scale,
+                    10,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    value[:45],
+                    x + 96 * scale,
+                    y + index * 24 * scale,
+                    9,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+        elif panel_id == "jobs-logs":
+            for index, item in enumerate(selected.logs[-8:]):
+                row_y = y + index * 26 * scale
+                self._text(
+                    rl,
+                    self._mono_font,
+                    item.timestamp.strftime("%H:%M:%S"),
+                    x,
+                    row_y,
+                    9,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    item.level,
+                    x + 58 * scale,
+                    row_y,
+                    9,
+                    scale,
+                    (60, 200, 200, 255),
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    item.message[:48],
+                    x + 104 * scale,
+                    row_y,
+                    9,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+
+    def _draw_phase8_results_panel(
+        self,
+        rl: object,
+        view: ShellView,
+        panel_id: str,
+        runs: tuple[object, ...],
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> None:
+        if panel_id == "results-runs":
+            for index, raw in enumerate(runs[:8]):
+                run = raw
+                row_y = y + index * 44 * scale
+                self._text(
+                    rl, self._mono_font, run.run_id, x, row_y, 10, scale, (214, 220, 229, 255)
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"immutable  {run.completed_at:%Y-%m-%d %H:%M}",
+                    x + 8 * scale,
+                    row_y + 18 * scale,
+                    9,
+                    scale,
+                    (76, 195, 138, 255),
+                )
+                self._outline(rl, x, row_y + 38 * scale, width, 1, (37, 43, 51, 255))
+            return
+        comparison = view.run_comparison
+        if comparison is None:
+            self._text(
+                rl,
+                self._inter_font,
+                "Preparing immutable comparison...",
+                x,
+                y,
+                10,
+                scale,
+                (126, 136, 150, 255),
+            )
+            return
+        if panel_id == "results-metrics":
+            run = comparison.runs[0]
+            for index, metric in enumerate(run.metrics):
+                row_y = y + index * 27 * scale
+                test = metric.partition is MetricPartition.TEST
+                color = (216, 180, 90, 255) if test else (60, 200, 200, 255)
+                label = f"{'TEST ' if test else 'validation '}{metric.metric}"
+                self._text(rl, self._mono_font, label, x, row_y, 9, scale, color)
+                value = "missing" if metric.value is None else f"{metric.value:.4f}"
+                self._text(rl, self._mono_font, value, x + width * 0.55, row_y, 9, scale, color)
+                self._outline(rl, x, row_y + 18 * scale, width, 1, (37, 43, 51, 255))
+            self._text(
+                rl,
+                self._inter_font,
+                "Validation selects; TEST remains isolated from tuning.",
+                x,
+                y + min(height - 20 * scale, 190 * scale),
+                9,
+                scale,
+                (216, 180, 90, 255),
+            )
+        elif panel_id in {"results-equity", "results-predictions"}:
+            series = comparison.runs[0].equity.points
+            if len(series) > 1:
+                low = min(item.value for item in series)
+                high = max(item.value for item in series)
+                span = max(1.0, high - low)
+                for left, right in pairwise(series):
+                    x1 = x + width * left.logical_index / (len(series) - 1)
+                    x2 = x + width * right.logical_index / (len(series) - 1)
+                    y1 = y + height * 0.72 - (left.value - low) / span * height * 0.62
+                    y2 = y + height * 0.72 - (right.value - low) / span * height * 0.62
+                    rl.draw_line(round(x1), round(y1), round(x2), round(y2), (60, 200, 200, 255))
+        elif panel_id == "results-folds":
+            for index, fold in enumerate(comparison.runs[0].folds):
+                label = (
+                    f"fold {fold.fold}  train {fold.train_start:%Y-%m-%d}  "
+                    f"test {fold.test_end:%Y-%m-%d}"
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    label,
+                    x,
+                    y + index * 26 * scale,
+                    9,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+        elif panel_id == "results-distributions":
+            distributions = (
+                comparison.runs[0].ic_distribution,
+                comparison.runs[0].prediction_distribution,
+            )
+            panel_width = width / 2 - 8 * scale
+            for group, distribution in enumerate(distributions):
+                origin = x + group * (panel_width + 16 * scale)
+                self._text(
+                    rl,
+                    self._inter_font,
+                    distribution.label,
+                    origin,
+                    y,
+                    9,
+                    scale,
+                    (60, 200, 200, 255) if group == 0 else (155, 124, 246, 255),
+                )
+                peak = max(distribution.counts)
+                bar_width = panel_width / len(distribution.counts)
+                for index, count in enumerate(distribution.counts):
+                    bar_height = (height - 36 * scale) * count / peak
+                    self._rect(
+                        rl,
+                        origin + index * bar_width,
+                        y + height - bar_height,
+                        max(1, bar_width - 2 * scale),
+                        bar_height,
+                        (60, 200, 200, 210) if group == 0 else (155, 124, 246, 210),
+                    )
+        elif panel_id == "results-config-diff":
+            if comparison.differences:
+                for index, difference in enumerate(comparison.differences):
+                    values = " | ".join(value for _, value in difference.values)
+                    self._text(
+                        rl,
+                        self._mono_font,
+                        difference.path,
+                        x,
+                        y + index * 26 * scale,
+                        9,
+                        scale,
+                        (126, 136, 150, 255),
+                    )
+                    self._text(
+                        rl,
+                        self._mono_font,
+                        values,
+                        x + width * 0.48,
+                        y + index * 26 * scale,
+                        9,
+                        scale,
+                        (155, 124, 246, 255),
+                    )
+            else:
+                for index, item in enumerate(comparison.runs[0].configuration):
+                    self._text(
+                        rl,
+                        self._mono_font,
+                        item.path,
+                        x,
+                        y + index * 26 * scale,
+                        9,
+                        scale,
+                        (126, 136, 150, 255),
+                    )
+                    self._text(
+                        rl,
+                        self._mono_font,
+                        item.value,
+                        x + width * 0.48,
+                        y + index * 26 * scale,
+                        9,
+                        scale,
+                        (155, 124, 246, 255),
+                    )
+
+    def _draw_phase7_panel(
+        self,
+        rl: object,
+        view: ShellView,
+        panel_id: str,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> None:
+        current = view.phase7_workspace
+        if current is None:
+            return
+        if panel_id != "data-catalog" or current.state in {
+            Phase7LoadState.LOADING,
+            Phase7LoadState.FAILED,
+            Phase7LoadState.CANCELLED,
+            Phase7LoadState.BUSY,
+        }:
+            catalog_control = panel_id == "data-catalog"
+            control_width = (134 if catalog_control else 142) * scale
+            control_x = x + width - (138 if catalog_control else 146) * scale
+            self._rect(
+                rl,
+                control_x,
+                y,
+                control_width,
+                20 * scale,
+                (23, 28, 34, 255),
+            )
+            self._outline(
+                rl,
+                control_x,
+                y,
+                control_width,
+                20 * scale,
+                (37, 43, 51, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                f"Scenario: {current.scenario.value}",
+                control_x + 6 * scale,
+                y + 5 * scale,
+                10,
+                scale,
+                (214, 220, 229, 255),
+            )
+        if current.state is Phase7LoadState.LOADING and not current.stale:
+            if panel_id.startswith("data-"):
+                box_y = y + 24 * scale
+                self._rect(rl, x, box_y, width, height - 24 * scale, (11, 13, 16, 255))
+                self._outline(rl, x, box_y, width, height - 24 * scale, (37, 43, 51, 255))
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "Loading deterministic catalog and import state...",
+                    x + 16 * scale,
+                    box_y + 16 * scale,
+                    11,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+            else:
+                self._draw_phase7_failure(
+                    rl,
+                    "cancelled",
+                    "context cancelled",
+                    "Retry keeps the local draft and requests a fresh generation.",
+                    x,
+                    y + 28 * scale,
+                    scale,
+                )
+            return
+        if (
+            current.state
+            in {Phase7LoadState.FAILED, Phase7LoadState.CANCELLED, Phase7LoadState.BUSY}
+            and not current.stale
+        ):
+            workspace_name = "Data" if panel_id.startswith("data-") else "Experiments"
+            detail = (
+                "Retry requests a fresh immutable generation."
+                if workspace_name == "Data"
+                else "Retry keeps the local draft and requests a fresh generation."
+            )
+            self._draw_phase7_failure(
+                rl,
+                "Error",
+                f"Deterministic {workspace_name} request failed",
+                detail,
+                x,
+                y + 28 * scale,
+                scale,
+            )
+            return
+        snapshot = current.snapshot
+        if snapshot is None:
+            self._text(
+                rl,
+                self._inter_font,
+                "Preparing typed workflow state",
+                x,
+                y,
+                11,
+                scale,
+                (126, 136, 150, 255),
+            )
+            return
+        if current.state is Phase7LoadState.EMPTY:
+            self._text(
+                rl,
+                self._inter_font,
+                "No workflow records are available",
+                x,
+                y,
+                11,
+                scale,
+                (126, 136, 150, 255),
+            )
+            return
+        if panel_id == "data-catalog":
+            self._draw_catalog(rl, view, x, y, width, height, scale)
+        elif panel_id == "data-coverage":
+            for index, item in enumerate(snapshot.catalog):
+                row_y = y + index * 54 * scale
+                self._text(
+                    rl, self._inter_font, item.name, x, row_y, 11, scale, (214, 220, 229, 255)
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"{item.coverage.start.date()}  ----------------  {item.coverage.end.date()}",
+                    x,
+                    row_y + 20 * scale,
+                    10,
+                    scale,
+                    (60, 200, 200, 255),
+                )
+        elif panel_id == "data-import-queue":
+            rows = snapshot.imports[-12:]
+            if not rows:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "Queue empty - press I to append demo bars",
+                    x,
+                    y,
+                    11,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+            for index, item in enumerate(rows):
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"{item.request.command_id}  {item.state.value}  rows {item.imported_rows}",
+                    x,
+                    y + index * 24 * scale,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+        elif panel_id == "data-dataset":
+            selected = next(
+                (
+                    item
+                    for item in snapshot.catalog
+                    if item.dataset_id == current.selected_dataset_id
+                ),
+                snapshot.catalog[0],
+            )
+            lines = (
+                ("Dataset", selected.name),
+                ("ID", selected.dataset_id),
+                ("Revision", str(selected.revision)),
+                ("Fingerprint", selected.content_fingerprint),
+                ("Symbols", ", ".join(selected.symbols)),
+                ("Interval", selected.interval),
+                ("Adjustment", selected.adjustment.value),
+            )
+            self._draw_phase7_fields(rl, lines, x, y, scale)
+        elif panel_id == "data-import-logs":
+            diagnostics = tuple(
+                diagnostic for item in snapshot.imports for diagnostic in item.diagnostics
+            )
+            if not diagnostics:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "No validation diagnostics",
+                    x,
+                    y,
+                    11,
+                    scale,
+                    (76, 195, 138, 255),
+                )
+            for index, item in enumerate(diagnostics[-16:]):
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"{item.code}: {item.message}",
+                    x,
+                    y + index * 22 * scale,
+                    10,
+                    scale,
+                    (239, 107, 115, 255),
+                )
+        else:
+            self._draw_experiment_panel(
+                rl, panel_id, current, x, y + 28 * scale, width, height, scale
+            )
+        if current.stale or current.state in {Phase7LoadState.DEGRADED, Phase7LoadState.RECOVERED}:
+            message = "refreshing" if current.stale else current.state.value
+            badge_y = y + 4 * scale
+            badge_width = (len(message) * 6 + 14) * scale
+            self._rect(rl, x + 4 * scale, badge_y, badge_width, 19 * scale, (17, 21, 26, 235))
+            self._outline(rl, x + 4 * scale, badge_y, badge_width, 19 * scale, (60, 200, 200, 255))
+            self._text(
+                rl,
+                self._inter_font,
+                message,
+                x + 10 * scale,
+                badge_y + 4 * scale,
+                9,
+                scale,
+                (60, 200, 200, 255),
+            )
+
+    def _draw_phase7_failure(
+        self,
+        rl: object,
+        title: str,
+        message: str,
+        detail: str,
+        x: float,
+        y: float,
+        scale: float,
+    ) -> None:
+        self._text(
+            rl,
+            self._mono_font,
+            title,
+            x,
+            y - 3 * scale,
+            11,
+            scale,
+            (214, 220, 229, 255),
+        )
+        self._text(
+            rl,
+            self._mono_font,
+            message,
+            x,
+            y + 20 * scale,
+            11,
+            scale,
+            (214, 220, 229, 255),
+        )
+        self._text(
+            rl,
+            self._mono_font,
+            detail,
+            x,
+            y + 44 * scale,
+            11,
+            scale,
+            (214, 220, 229, 255) if "local draft" in detail else (126, 136, 150, 255),
+        )
+        self._rect(rl, x, y + 68 * scale, 84 * scale, 24 * scale, (23, 28, 34, 255))
+        self._outline(rl, x, y + 68 * scale, 84 * scale, 24 * scale, (37, 43, 51, 255))
+        self._text(
+            rl,
+            self._inter_font,
+            "Retry",
+            x + 6 * scale,
+            y + 74 * scale,
+            10,
+            scale,
+            (214, 220, 229, 255),
+        )
+
+    def _draw_experiment_panel(
+        self,
+        rl: object,
+        panel_id: str,
+        current: Phase7WorkspaceState,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> None:
+        snapshot = current.snapshot
+        draft = current.draft
+        evaluation = current.evaluation
+        if snapshot is None or draft is None:
+            return
+        if panel_id == "experiments-list":
+            definitions = snapshot.experiments
+            if not definitions:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "Daily equity baseline",
+                    x,
+                    y,
+                    11,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    draft.draft_id,
+                    x,
+                    y + 20 * scale,
+                    9,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+            for index, item in enumerate(definitions):
+                label = (
+                    "Daily equity baseline"
+                    if item.experiment_id == "experiment-demo-complete"
+                    else "Daily equity baseline"
+                    if item.experiment_id == "experiment-demo-forest"
+                    else "Submitted experiment"
+                )
+                self._text(
+                    rl,
+                    self._inter_font,
+                    label,
+                    x + 6 * scale,
+                    y + (2 + index * 38) * scale,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    item.experiment_id,
+                    x + 6 * scale,
+                    y + (18 + index * 38) * scale,
+                    9,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+        elif panel_id == "experiments-configuration":
+            self._draw_phase7_fields(
+                rl,
+                (
+                    ("Dataset", draft.dataset_id),
+                    ("Features", str(len(draft.features))),
+                    ("Target", f"{draft.target_horizon} bars"),
+                    ("Split", f"{draft.train_bars}/{draft.validation_bars}/{draft.test_bars}"),
+                    ("Model", draft.model_kind),
+                    ("Portfolio", f"${draft.initial_capital:,.0f}"),
+                    ("Sweep", str(len(draft.sweep_values))),
+                ),
+                x,
+                y,
+                scale,
+            )
+        elif panel_id == "experiments-properties":
+            self._draw_phase7_fields(
+                rl,
+                (
+                    ("Draft revision", str(draft.revision)),
+                    ("Estimators", str(draft.estimator_count)),
+                    ("Max depth", str(draft.max_depth)),
+                    ("Purge bars", str(draft.purge_bars)),
+                    ("CPU limit", str(draft.cpu_limit)),
+                    ("Autosaved", str(current.saved_revision)),
+                ),
+                x,
+                y,
+                scale,
+            )
+        elif panel_id == "experiments-inspector":
+            feature = draft.features[0]
+            self._draw_phase7_fields(
+                rl,
+                (
+                    ("Feature", feature.name),
+                    ("Version", feature.semantic_version),
+                    ("Lookback", str(feature.lookback)),
+                    ("Schema", feature.output_schema),
+                    ("Fingerprint", feature.fingerprint),
+                    ("Dataset fingerprint", draft.dataset_fingerprint),
+                ),
+                x,
+                y,
+                scale,
+            )
+        elif panel_id == "experiments-validation":
+            diagnostics = () if evaluation is None else evaluation.diagnostics
+            if not diagnostics:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "Valid - ready for immutable submission",
+                    x,
+                    y,
+                    11,
+                    scale,
+                    (76, 195, 138, 255),
+                )
+            for index, item in enumerate(diagnostics):
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"{item.field}: {item.message}",
+                    x,
+                    y + index * 24 * scale,
+                    10,
+                    scale,
+                    (239, 107, 115, 255),
+                )
+        elif panel_id == "experiments-resources" and evaluation is not None:
+            estimate = evaluation.estimate
+            self._draw_phase7_fields(
+                rl,
+                (
+                    ("Rows", f"{estimate.rows:,}"),
+                    ("Feature bytes", f"{estimate.feature_bytes:,}"),
+                    ("Peak bytes", f"{estimate.peak_bytes:,}"),
+                    ("CPU seconds", f"{estimate.cpu_seconds:.3f}"),
+                ),
+                x,
+                y,
+                scale,
+            )
+
+    def _draw_phase7_fields(
+        self, rl: object, fields: tuple[tuple[str, str], ...], x: float, y: float, scale: float
+    ) -> None:
+        for index, (label, value) in enumerate(fields):
+            row_y = y + index * 26 * scale
+            self._text(rl, self._inter_font, label, x, row_y, 10, scale, (126, 136, 150, 255))
+            self._text(
+                rl, self._mono_font, value, x + 132 * scale, row_y, 10, scale, (214, 220, 229, 255)
+            )
 
     def _draw_research_panel(
         self,
@@ -1635,12 +3083,15 @@ class RaylibUIAdapter:
         scale: float,
     ) -> None:
         button_x = x + width - 138 * scale
+        scenario = (
+            view.phase7_workspace.scenario.value if view.phase7_workspace is not None else "normal"
+        )
         self._rect(rl, button_x, y, 134 * scale, 20 * scale, (23, 28, 34, 255))
         self._outline(rl, button_x, y, 134 * scale, 20 * scale, (37, 43, 51, 255))
         self._text(
             rl,
             self._inter_font,
-            "Scenario: normal",
+            f"Scenario: {scenario}",
             button_x + 6 * scale,
             y + 5 * scale,
             10,

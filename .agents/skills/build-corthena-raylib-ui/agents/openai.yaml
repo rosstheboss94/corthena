@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Corthena Raylib UI"
+  short_description: "Build the Windows Raylib ui safely"
+  default_prompt: "Use $build-corthena-raylib-ui to implement the requested Corthena ui scaffold or Raylib UI change."

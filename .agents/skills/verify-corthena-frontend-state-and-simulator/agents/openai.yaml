@@ -1,4 +1,0 @@
-interface:
-  display_name: "Verify Corthena Frontend State and Simulator"
-  short_description: "Verify deterministic Phase 2 frontend behavior"
-  default_prompt: "Use $verify-corthena-frontend-state-and-simulator to verify Phase 2 state, effects, and simulator behavior."

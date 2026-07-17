@@ -2,7 +2,7 @@
 
 **Status:** In progress
 **Owner:** Project  
-**Last updated:** 2026-07-12
+**Last updated:** 2026-07-15
 
 Build deterministic Python/Cython ui workflows before the real coordinator
 and research engine. Behavioral requirements live in owning
@@ -19,7 +19,7 @@ specifications; `specs/routing/phase-*.md` provides compact reading routes and
 | 5 | [Charts and tables foundation](routing/phase-5.md) | Complete; accepted typed numerical kernels, clipping, LOD, virtualization, bounded generation-safe cache/workers, immutable publication, lifecycle checks, proportional-work evidence, and benchmarks are delivered. |
 | 5b | [Visualization acceptance and visual parity](routing/phase-5b.md) | Complete; generic Raylib layers and typed interactions, bounded cross-scope request and pagination-worker parity, the reviewed six-case legacy Go golden family, exact Python decoded-RGBA comparisons, Windows/build gates, and final audits pass. |
 | 6 | Research vertical slice | Pending; Phase 5b prerequisite is satisfied. Implement linked panels, deterministic scenarios, leakage checks, replay, benchmarks, and the 36-image matrix. |
-| 7 | Data and Experiments | Pending; implement catalog/import, validation, estimates, autosave, immutable submission, benchmarks, and the 60-image matrix. |
+| 7 | [Data and Experiments](routing/phase-7.md) | Implemented; typed catalog/import, validation, estimates, revision-safe autosave, immutable idempotent submission, simulator/effects integration, panels, focused tests, and benchmarks are present. Acceptance remains pending while the legacy 60-image matrix differs above tolerance at 150% and 200% scale. |
 | 8 | Jobs and Results | Pending; implement the virtual queue, lifecycle controls, checkpoints, immutable comparisons, charts, stale-generation behavior, and the 60-image matrix. |
 | 9 | Models and Inference | Pending; implement the immutable registry, transactional aliases, artifact provenance/tree validation, compatibility-gated scoring, rankings, distributions, history, export, cancellation, and the 66-image golden matrix. |
 | 10 | Backend-swap readiness | Keep the simulator behind `UIClient`; add contract, cancellation, reconnect, reconciliation, stale-generation, adapter, reducer, lifecycle, and golden coverage. |
@@ -205,6 +205,29 @@ review requirement must pass. Missing implementation, baseline, comparison, or
 audit evidence keeps Phase 5b Pending and Phase 6 blocked. Phase 5b excludes
 Research-specific queries, fixtures, linked-workspace behavior, and Phase 7+
 domain workflows.
+
+## Phase 7 route and done condition
+
+Use the [Phase 7 task route](routing/phase-7.md) with these required skills, in
+order:
+
+1. `$build-corthena-data-and-experiments`
+2. `$build-corthena-raylib-visual-system`
+3. `$python-best-practices`
+4. `$verify-corthena-data-and-experiments`
+5. `$verify-corthena-raylib-visual-system`
+6. `$review-corthena-code`
+
+Phase 7 is complete only when the simulated Data and Experiments workspaces
+provide typed catalog and import flows, atomic catalog revisions, deterministic
+draft validation and estimates, revision-safe autosave, and idempotent immutable
+submission through `UIClient` and bounded effects. Generation, cancellation,
+stale-result, replay, saturation, recovery, corruption, future-data isolation,
+benchmark, lifecycle, and quality evidence must pass. Every manifest-owned Data
+and Experiments capture at 1280x720 and 1920x1080, 100%, 150%, and 200% scale,
+and all five recorded scenarios must compare with channel tolerance `3` and a
+maximum differing-pixel ratio of `0.002`. A missing or failing case keeps the
+phase pending.
 
 ## Global acceptance
 

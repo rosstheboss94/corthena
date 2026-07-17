@@ -8,17 +8,109 @@ from datetime import UTC, datetime
 import pytest
 
 from corthena.ui.client import CancellationSignal, RequestCancelledError
+from corthena.ui.data_experiments.models import (
+    DraftEvaluation,
+    DraftSaveRequest,
+    DraftSaveResult,
+    ExperimentDefinition,
+    ExperimentDraft,
+    ImportRequest,
+    ImportResult,
+    Phase7Request,
+    Phase7Snapshot,
+    SubmissionRequest,
+)
 from corthena.ui.effects import (
     EffectsRuntime,
     EnqueueState,
     RuntimeClosedError,
     RuntimeConfig,
 )
+from corthena.ui.jobs_results.models import (
+    ComparisonQuery,
+    JobCommand,
+    JobCommandResult,
+    Phase8Request,
+    Phase8Snapshot,
+    RunComparison,
+)
+from corthena.ui.models_inference.models import (
+    AliasCommand,
+    AliasResult,
+    ExportRequest,
+    ExportResult,
+    InferenceQuery,
+    InferenceSnapshot,
+    Phase9Request,
+    Phase9Snapshot,
+)
 from corthena.ui.research.models import ResearchQuery, ResearchSnapshot
 from corthena.ui.simulator import DeterministicSimulator, SimulatorConfig
 from corthena.ui.state import CancelRequest, LoadSnapshot, Snapshot, SnapshotCompleted
 
 FIXED_CLOCK = datetime(2026, 7, 12, 14, 30, tzinfo=UTC)
+
+
+class Phase7ClientStubs:
+    def load_phase7(
+        self, request: Phase7Request, cancellation: CancellationSignal
+    ) -> Phase7Snapshot:
+        raise AssertionError("Phase 7 operation is outside this focused test")
+
+    def import_data(self, request: ImportRequest, cancellation: CancellationSignal) -> ImportResult:
+        raise AssertionError("Phase 7 operation is outside this focused test")
+
+    def evaluate_draft(
+        self,
+        request_id: str,
+        generation: int,
+        draft: ExperimentDraft,
+        cancellation: CancellationSignal,
+    ) -> DraftEvaluation:
+        raise AssertionError("Phase 7 operation is outside this focused test")
+
+    def save_draft(
+        self, request: DraftSaveRequest, cancellation: CancellationSignal
+    ) -> DraftSaveResult:
+        raise AssertionError("Phase 7 operation is outside this focused test")
+
+    def submit_experiment(
+        self, request: SubmissionRequest, cancellation: CancellationSignal
+    ) -> ExperimentDefinition:
+        raise AssertionError("Phase 7 operation is outside this focused test")
+
+    def load_phase8(
+        self, request: Phase8Request, cancellation: CancellationSignal
+    ) -> Phase8Snapshot:
+        raise AssertionError("Phase 8 operation is outside this focused test")
+
+    def command_job(
+        self, command: JobCommand, cancellation: CancellationSignal
+    ) -> JobCommandResult:
+        raise AssertionError("Phase 8 operation is outside this focused test")
+
+    def compare_runs(
+        self, query: ComparisonQuery, cancellation: CancellationSignal
+    ) -> RunComparison:
+        raise AssertionError("Phase 8 operation is outside this focused test")
+
+    def load_phase9(
+        self, request: Phase9Request, cancellation: CancellationSignal
+    ) -> Phase9Snapshot:
+        raise AssertionError("Phase 9 operation is outside this focused test")
+
+    def assign_alias(self, command: AliasCommand, cancellation: CancellationSignal) -> AliasResult:
+        raise AssertionError("Phase 9 operation is outside this focused test")
+
+    def score_inference(
+        self, query: InferenceQuery, cancellation: CancellationSignal
+    ) -> InferenceSnapshot:
+        raise AssertionError("Phase 9 operation is outside this focused test")
+
+    def prepare_export(
+        self, request: ExportRequest, cancellation: CancellationSignal
+    ) -> ExportResult:
+        raise AssertionError("Phase 9 operation is outside this focused test")
 
 
 def wait_for_actions(runtime: EffectsRuntime, count: int) -> tuple[object, ...]:
@@ -65,7 +157,7 @@ def test_recorded_phase_2_seeded_startup_scenario() -> None:
 
 
 @dataclass
-class BlockingClient:
+class BlockingClient(Phase7ClientStubs):
     entered: threading.Event
     exited: threading.Event
 
@@ -102,7 +194,7 @@ def test_cancellation_during_work_and_idempotent_shutdown_leave_no_threads() -> 
 
 
 @dataclass
-class GateClient:
+class GateClient(Phase7ClientStubs):
     gate: threading.Event
 
     def load_snapshot(

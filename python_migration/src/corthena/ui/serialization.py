@@ -6,7 +6,63 @@ from datetime import datetime
 from threading import Event
 from typing import TypeIs
 
+from corthena.ui.data_experiments.actions import (
+    CancelPhase7,
+    LoadPhase7,
+    Phase7Cancelled,
+    Phase7Completed,
+    Phase7Failed,
+    RequestPhase7,
+    SelectDataset,
+    SetPhase7Scenario,
+)
+from corthena.ui.data_experiments.deterministic import DataExperimentsDemo
+from corthena.ui.data_experiments.models import (
+    Phase7Request,
+    Phase7Scenario,
+    Phase7Workspace,
+)
 from corthena.ui.docking import DockPosition
+from corthena.ui.jobs_results.actions import (
+    CancelPhase8,
+    CompareRuns,
+    ComparisonCancelled,
+    ComparisonFailed,
+    ExecuteJobCommand,
+    LoadPhase8,
+    Phase8Cancelled,
+    Phase8Completed,
+    Phase8Failed,
+    RequestComparison,
+    RequestJobCommand,
+    RequestPhase8,
+    SelectComparisonRuns,
+    SelectJob,
+    SetPhase8Scenario,
+)
+from corthena.ui.jobs_results.deterministic import JobsResultsDemo
+from corthena.ui.jobs_results.models import (
+    ComparisonQuery,
+    JobCommand,
+    JobCommandKind,
+    Phase8Request,
+    Phase8Scenario,
+    Phase8Workspace,
+    RunFilter,
+)
+from corthena.ui.models_inference.actions import (
+    CancelPhase9,
+    LoadPhase9,
+    Phase9Cancelled,
+    Phase9Failed,
+    RequestPhase9,
+    SetPhase9Scenario,
+)
+from corthena.ui.models_inference.models import (
+    Phase9Request,
+    Phase9Scenario,
+    Phase9Workspace,
+)
 from corthena.ui.persistence import (
     LayoutCollection,
     NamedLayout,
@@ -390,6 +446,114 @@ def encode_action(action: UIAction) -> dict[str, JsonValue]:
                 "start": time_range.start.isoformat(),
                 "end": time_range.end.isoformat(),
             }
+        case RequestPhase7(request=request):
+            return {"type": "request_phase7", "request": _encode_phase7_request(request)}
+        case Phase7Completed(snapshot=snapshot):
+            return {
+                "type": "phase7_completed",
+                "request": _encode_phase7_request(snapshot.request),
+                "replay_seed": snapshot.replay_seed,
+                "replay_clock": snapshot.replay_clock.isoformat(),
+            }
+        case Phase7Failed(workspace=workspace, generation=generation, message=message, busy=busy):
+            return {
+                "type": "phase7_failed",
+                "workspace": workspace.value,
+                "generation": generation,
+                "message": message,
+                "busy": busy,
+            }
+        case Phase7Cancelled(workspace=workspace, generation=generation):
+            return {
+                "type": "phase7_cancelled",
+                "workspace": workspace.value,
+                "generation": generation,
+            }
+        case SetPhase7Scenario(workspace=workspace, scenario=scenario):
+            return {
+                "type": "set_phase7_scenario",
+                "workspace": workspace.value,
+                "scenario": scenario.value,
+            }
+        case SelectDataset(dataset_id=dataset_id):
+            return {"type": "select_phase7_dataset", "dataset_id": dataset_id}
+        case RequestPhase8(request=request):
+            return {"type": "request_phase8", "request": _encode_phase8_request(request)}
+        case Phase8Completed(snapshot=snapshot):
+            return {
+                "type": "phase8_completed",
+                "request": _encode_phase8_request(snapshot.request),
+                "replay_seed": snapshot.replay_seed,
+                "replay_clock": snapshot.replay_clock.isoformat(),
+            }
+        case Phase8Failed(workspace=workspace, generation=generation, message=message, busy=busy):
+            return {
+                "type": "phase8_failed",
+                "workspace": workspace.value,
+                "generation": generation,
+                "message": message,
+                "busy": busy,
+            }
+        case Phase8Cancelled(workspace=workspace, generation=generation):
+            return {
+                "type": "phase8_cancelled",
+                "workspace": workspace.value,
+                "generation": generation,
+            }
+        case SetPhase8Scenario(workspace=workspace, scenario=scenario):
+            return {
+                "type": "set_phase8_scenario",
+                "workspace": workspace.value,
+                "scenario": scenario.value,
+            }
+        case SelectJob(job_id=job_id):
+            return {"type": "select_phase8_job", "job_id": job_id}
+        case SelectComparisonRuns(run_ids=run_ids):
+            return {"type": "select_phase8_runs", "run_ids": list(run_ids)}
+        case RequestComparison(query=query):
+            return {"type": "request_phase8_comparison", "query": _encode_comparison(query)}
+        case ComparisonFailed(
+            request_id=request_id, generation=generation, message=message, busy=busy
+        ):
+            return {
+                "type": "phase8_comparison_failed",
+                "request_id": request_id,
+                "generation": generation,
+                "message": message,
+                "busy": busy,
+            }
+        case ComparisonCancelled(request_id=request_id, generation=generation):
+            return {
+                "type": "phase8_comparison_cancelled",
+                "request_id": request_id,
+                "generation": generation,
+            }
+        case RequestJobCommand(command=command):
+            return {"type": "request_phase8_job_command", "command": _encode_job_command(command)}
+        case RequestPhase9(request=request):
+            return {"type": "request_phase9", "request": _encode_phase9_request(request)}
+        case Phase9Failed(workspace=workspace, generation=generation, message=message, busy=busy):
+            return {
+                "type": "phase9_failed",
+                "workspace": workspace.value,
+                "generation": generation,
+                "message": message,
+                "busy": busy,
+            }
+        case Phase9Cancelled(workspace=workspace, generation=generation):
+            return {
+                "type": "phase9_cancelled",
+                "workspace": workspace.value,
+                "generation": generation,
+            }
+        case SetPhase9Scenario(workspace=workspace, scenario=scenario):
+            return {
+                "type": "set_phase9_scenario",
+                "workspace": workspace.value,
+                "scenario": scenario.value,
+            }
+        case _:
+            raise TypeError(f"action is not replay-serializable: {type(action).__name__}")
 
 
 def decode_action(value: object) -> UIAction:
@@ -622,6 +786,122 @@ def decode_action(value: object) -> UIAction:
                 datetime.fromisoformat(_string(record, "end")),
             ),
         )
+    if kind == "request_phase7":
+        record = _object(value, frozenset({"type", "request"}))
+        return RequestPhase7(_decode_phase7_request(record["request"]))
+    if kind == "phase7_completed":
+        record = _object(value, frozenset({"type", "request", "replay_seed", "replay_clock"}))
+        request = _decode_phase7_request(record["request"])
+        clock = datetime.fromisoformat(_string(record, "replay_clock"))
+        snapshot = DataExperimentsDemo(_integer(record, "replay_seed"), clock).load(
+            request, Event()
+        )
+        return Phase7Completed(snapshot)
+    if kind in {"phase7_failed", "phase7_cancelled"}:
+        fields = {"type", "workspace", "generation"}
+        if kind == "phase7_failed":
+            fields |= {"message", "busy"}
+        record = _object(value, frozenset(fields))
+        workspace = Phase7Workspace(_string(record, "workspace"))
+        if kind == "phase7_cancelled":
+            return Phase7Cancelled(workspace, _integer(record, "generation"))
+        return Phase7Failed(
+            workspace,
+            _integer(record, "generation"),
+            _string(record, "message"),
+            _boolean(record, "busy"),
+        )
+    if kind == "set_phase7_scenario":
+        record = _object(value, frozenset({"type", "workspace", "scenario"}))
+        return SetPhase7Scenario(
+            Phase7Workspace(_string(record, "workspace")),
+            Phase7Scenario(_string(record, "scenario")),
+        )
+    if kind == "select_phase7_dataset":
+        record = _object(value, frozenset({"type", "dataset_id"}))
+        return SelectDataset(_string(record, "dataset_id"))
+    if kind == "request_phase8":
+        record = _object(value, frozenset({"type", "request"}))
+        return RequestPhase8(_decode_phase8_request(record["request"]))
+    if kind == "phase8_completed":
+        record = _object(value, frozenset({"type", "request", "replay_seed", "replay_clock"}))
+        return Phase8Completed(
+            JobsResultsDemo(
+                _integer(record, "replay_seed"),
+                datetime.fromisoformat(_string(record, "replay_clock")),
+            ).load(_decode_phase8_request(record["request"]), Event())
+        )
+    if kind in {"phase8_failed", "phase8_cancelled"}:
+        fields = {"type", "workspace", "generation"}
+        if kind == "phase8_failed":
+            fields |= {"message", "busy"}
+        record = _object(value, frozenset(fields))
+        workspace = Phase8Workspace(_string(record, "workspace"))
+        if kind == "phase8_cancelled":
+            return Phase8Cancelled(workspace, _integer(record, "generation"))
+        return Phase8Failed(
+            workspace,
+            _integer(record, "generation"),
+            _string(record, "message"),
+            _boolean(record, "busy"),
+        )
+    if kind == "set_phase8_scenario":
+        record = _object(value, frozenset({"type", "workspace", "scenario"}))
+        return SetPhase8Scenario(
+            Phase8Workspace(_string(record, "workspace")),
+            Phase8Scenario(_string(record, "scenario")),
+        )
+    if kind == "select_phase8_job":
+        record = _object(value, frozenset({"type", "job_id"}))
+        return SelectJob(_string(record, "job_id"))
+    if kind == "select_phase8_runs":
+        record = _object(value, frozenset({"type", "run_ids"}))
+        return SelectComparisonRuns(_string_tuple(record, "run_ids"))
+    if kind == "request_phase8_comparison":
+        record = _object(value, frozenset({"type", "query"}))
+        return RequestComparison(_decode_comparison(record["query"]))
+    if kind in {"phase8_comparison_failed", "phase8_comparison_cancelled"}:
+        fields = {"type", "request_id", "generation"}
+        if kind == "phase8_comparison_failed":
+            fields |= {"message", "busy"}
+        record = _object(value, frozenset(fields))
+        if kind == "phase8_comparison_cancelled":
+            return ComparisonCancelled(
+                _string(record, "request_id"), _integer(record, "generation")
+            )
+        return ComparisonFailed(
+            _string(record, "request_id"),
+            _integer(record, "generation"),
+            _string(record, "message"),
+            _boolean(record, "busy"),
+        )
+    if kind == "request_phase8_job_command":
+        record = _object(value, frozenset({"type", "command"}))
+        return RequestJobCommand(_decode_job_command(record["command"]))
+    if kind == "request_phase9":
+        record = _object(value, frozenset({"type", "request"}))
+        return RequestPhase9(_decode_phase9_request(record["request"]))
+    if kind in {"phase9_failed", "phase9_cancelled"}:
+        fields = {"type", "workspace", "generation"}
+        if kind == "phase9_failed":
+            fields |= {"message", "busy"}
+        record = _object(value, frozenset(fields))
+        workspace = Phase9Workspace(_string(record, "workspace"))
+        generation = _integer(record, "generation")
+        if kind == "phase9_cancelled":
+            return Phase9Cancelled(workspace, generation)
+        return Phase9Failed(
+            workspace,
+            generation,
+            _string(record, "message"),
+            _boolean(record, "busy"),
+        )
+    if kind == "set_phase9_scenario":
+        record = _object(value, frozenset({"type", "workspace", "scenario"}))
+        return SetPhase9Scenario(
+            Phase9Workspace(_string(record, "workspace")),
+            Phase9Scenario(_string(record, "scenario")),
+        )
     raise ValueError(f"unknown action discriminator: {kind!r}")
 
 
@@ -641,6 +921,24 @@ def encode_effect(effect: UIEffect) -> dict[str, JsonValue]:
                 "group_id": group_id,
                 "generation": generation,
             }
+        case LoadPhase7(request=request):
+            return {"type": "load_phase7", "request": _encode_phase7_request(request)}
+        case CancelPhase7(request_id=request_id):
+            return {"type": "cancel_phase7", "request_id": request_id}
+        case LoadPhase8(request=request):
+            return {"type": "load_phase8", "request": _encode_phase8_request(request)}
+        case ExecuteJobCommand(command=command):
+            return {"type": "execute_phase8_job_command", "command": _encode_job_command(command)}
+        case CompareRuns(query=query):
+            return {"type": "compare_phase8_runs", "query": _encode_comparison(query)}
+        case CancelPhase8(request_id=request_id):
+            return {"type": "cancel_phase8", "request_id": request_id}
+        case LoadPhase9(request=request):
+            return {"type": "load_phase9", "request": _encode_phase9_request(request)}
+        case CancelPhase9(request_id=request_id):
+            return {"type": "cancel_phase9", "request_id": request_id}
+        case _:
+            raise TypeError(f"effect is not replay-serializable: {type(effect).__name__}")
 
 
 def decode_effect(value: object) -> UIEffect:
@@ -664,7 +962,134 @@ def decode_effect(value: object) -> UIEffect:
             _string(record, "group_id"),
             _integer(record, "generation"),
         )
+    if kind == "load_phase7":
+        record = _object(value, frozenset({"type", "request"}))
+        return LoadPhase7(_decode_phase7_request(record["request"]))
+    if kind == "cancel_phase7":
+        record = _object(value, frozenset({"type", "request_id"}))
+        return CancelPhase7(_string(record, "request_id"))
+    if kind == "load_phase8":
+        record = _object(value, frozenset({"type", "request"}))
+        return LoadPhase8(_decode_phase8_request(record["request"]))
+    if kind == "execute_phase8_job_command":
+        record = _object(value, frozenset({"type", "command"}))
+        return ExecuteJobCommand(_decode_job_command(record["command"]))
+    if kind == "compare_phase8_runs":
+        record = _object(value, frozenset({"type", "query"}))
+        return CompareRuns(_decode_comparison(record["query"]))
+    if kind == "cancel_phase8":
+        record = _object(value, frozenset({"type", "request_id"}))
+        return CancelPhase8(_string(record, "request_id"))
+    if kind == "load_phase9":
+        record = _object(value, frozenset({"type", "request"}))
+        return LoadPhase9(_decode_phase9_request(record["request"]))
+    if kind == "cancel_phase9":
+        record = _object(value, frozenset({"type", "request_id"}))
+        return CancelPhase9(_string(record, "request_id"))
     raise ValueError(f"unknown effect discriminator: {kind!r}")
 
 
 __all__ = ["JsonValue", "decode_action", "decode_effect", "encode_action", "encode_effect"]
+
+
+def _encode_phase7_request(request: Phase7Request) -> dict[str, JsonValue]:
+    return {
+        "request_id": request.request_id,
+        "generation": request.generation,
+        "workspace": request.workspace.value,
+        "scenario": request.scenario.value,
+    }
+
+
+def _decode_phase7_request(value: object) -> Phase7Request:
+    record = _object(value, frozenset({"request_id", "generation", "workspace", "scenario"}))
+    return Phase7Request(
+        _string(record, "request_id"),
+        _integer(record, "generation"),
+        Phase7Workspace(_string(record, "workspace")),
+        Phase7Scenario(_string(record, "scenario")),
+    )
+
+
+def _encode_phase8_request(request: Phase8Request) -> dict[str, JsonValue]:
+    return {
+        "request_id": request.request_id,
+        "generation": request.generation,
+        "workspace": request.workspace.value,
+        "scenario": request.scenario.value,
+    }
+
+
+def _decode_phase8_request(value: object) -> Phase8Request:
+    record = _object(value, frozenset({"request_id", "generation", "workspace", "scenario"}))
+    return Phase8Request(
+        _string(record, "request_id"),
+        _integer(record, "generation"),
+        Phase8Workspace(_string(record, "workspace")),
+        Phase8Scenario(_string(record, "scenario")),
+    )
+
+
+def _encode_phase9_request(request: Phase9Request) -> dict[str, JsonValue]:
+    return {
+        "request_id": request.request_id,
+        "generation": request.generation,
+        "workspace": request.workspace.value,
+        "scenario": request.scenario.value,
+    }
+
+
+def _decode_phase9_request(value: object) -> Phase9Request:
+    record = _object(value, frozenset({"request_id", "generation", "workspace", "scenario"}))
+    return Phase9Request(
+        _string(record, "request_id"),
+        _integer(record, "generation"),
+        Phase9Workspace(_string(record, "workspace")),
+        Phase9Scenario(_string(record, "scenario")),
+    )
+
+
+def _encode_job_command(command: JobCommand) -> dict[str, JsonValue]:
+    return {
+        "command_id": command.command_id,
+        "correlation_id": command.correlation_id,
+        "generation": command.generation,
+        "job_id": command.job_id,
+        "kind": command.kind.value,
+    }
+
+
+def _decode_job_command(value: object) -> JobCommand:
+    fields = frozenset({"command_id", "correlation_id", "generation", "job_id", "kind"})
+    record = _object(value, fields)
+    return JobCommand(
+        _string(record, "command_id"),
+        _string(record, "correlation_id"),
+        _integer(record, "generation"),
+        _string(record, "job_id"),
+        JobCommandKind(_string(record, "kind")),
+    )
+
+
+def _encode_comparison(query: ComparisonQuery) -> dict[str, JsonValue]:
+    return {
+        "request_id": query.request_id,
+        "generation": query.generation,
+        "run_ids": list(query.run_ids),
+        "filter_text": query.filters.text,
+        "model_kind": query.filters.model_kind,
+    }
+
+
+def _decode_comparison(value: object) -> ComparisonQuery:
+    fields = frozenset({"request_id", "generation", "run_ids", "filter_text", "model_kind"})
+    record = _object(value, fields)
+    model_kind = record["model_kind"]
+    if model_kind is not None and not isinstance(model_kind, str):
+        raise ValueError("model_kind must be a string or null")
+    return ComparisonQuery(
+        _string(record, "request_id"),
+        _integer(record, "generation"),
+        _string_tuple(record, "run_ids"),
+        RunFilter(_string(record, "filter_text"), model_kind),
+    )

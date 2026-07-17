@@ -2,7 +2,7 @@
 
 **Status:** Authoritative  
 **Owner:** Project  
-**Last updated:** 2026-07-13
+**Last updated:** 2026-07-16
 
 This directory defines the required behavior of the Python/Cython trading
 research workstation. Read only the documents relevant to the task. `AGENTS.md`
@@ -13,7 +13,8 @@ contains the default routing table.
 | Document | Owns |
 |---|---|
 | [design-pattern.md](design-pattern.md) | Modular monolith boundaries, route design pattern, dependency direction, SOLID and pattern usage |
-| [contract.md](contract.md) | Agent-facing protocols, concrete-interface stubs, and contract context rules |
+| [contract.md](contract.md) | Mandatory agent-facing protocol, stub, and minimum-context rules, including subsystem context maps |
+| [examples/agent-facing-contracts.md](examples/agent-facing-contracts.md) | Optional non-authoritative protocol, stub, and package-layout examples |
 | [product.md](product.md) | Goals, scope, users, terminology, and assumptions |
 | [technology-stack.md](technology-stack.md) | Approved Python/Cython dependencies, tooling, dependency policy, and admission gates |
 | [python-migration.md](python-migration.md) | Python/Cython implementation order, package mapping, compatibility rules, and screenshot baseline policy |

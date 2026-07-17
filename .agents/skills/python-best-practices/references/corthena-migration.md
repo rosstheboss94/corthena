@@ -13,9 +13,9 @@ owning specification rather than duplicating it here.
   `python_migration/specs/technology-stack.md`.
 - Quality and verification: `python_migration/specs/quality.md` plus applicable
   `python_migration/specs/quality-*.md` documents.
-- Native UI: `python_migration/specs/frontend/foundation.md`; use
-  `python_migration/specs/frontend/workspaces.md` or
-  `python_migration/specs/frontend/visualization.md` when those behaviors are involved.
+- Native UI: `python_migration/specs/ui/foundation.md`; use
+  `python_migration/specs/ui/workspaces.md` or
+  `python_migration/specs/ui/visualization.md` when those behaviors are involved.
 
 ## Non-negotiables
 

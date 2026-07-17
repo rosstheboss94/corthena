@@ -12,7 +12,7 @@ future backend replacement.
 ## Ground verification
 
 1. Read `python_migration/AGENTS.md`, `python_migration/specs/routing/phase-7.md`,
-   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
+   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
    `python_migration/specs/data-and-features.md`, `python_migration/specs/quality.md`, and `python_migration/specs/api.md`.
 2. Inspect Data/Experiments state, actions/effects, client types, simulator,
    renderers, layout/link groups, persistence workers, virtual tables, and
@@ -23,7 +23,7 @@ future backend replacement.
 
 ## Verify typed boundaries and deterministic state
 
-- Exercise every Data and Experiments request through `FrontendClient` and
+- Exercise every Data and Experiments request through `UIClient` and
   the effects runtime; fail if panels import or branch on simulator details.
 - Validate dataset/revision/fingerprint, import mode/range, symbols,
   interval, correlation, generation, draft revision, configuration values,

@@ -23,7 +23,7 @@ description: Build Corthena Phase 5 first-party chart and table infrastructure, 
 - Reject non-finite, degenerate, or out-of-range inputs before publication.
   Publish immutable render-ready values with stable source-index tie-breaking
   and deterministic output independent of completion order.
-- Implement every generic layer owned by `frontend/visualization.md`. Keep
+- Implement every generic layer owned by `ui/visualization.md`. Keep
   Research queries, fixtures, features, targets, and workflow state out.
 
 ## Bound charts, workers, and caches

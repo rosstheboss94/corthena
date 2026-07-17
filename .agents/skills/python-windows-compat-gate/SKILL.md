@@ -15,7 +15,7 @@ record unsupported combinations rather than silently changing architecture.
    relevant roadmap route, `technology-stack.md`, and `quality.md`.
 2. Read `system-architecture.md`,
    `decisions/0005-python-process-concurrency.md`, and `api.md` for process or
-   public-protocol changes. Read `frontend/foundation.md` for shell or UI-thread work.
+   public-protocol changes. Read `ui/foundation.md` for shell or UI-thread work.
 3. Treat `python_migration/specs/` as authoritative. Do not select versions or
    create a `pyproject.toml`/`uv.lock` until the spike passes.
 

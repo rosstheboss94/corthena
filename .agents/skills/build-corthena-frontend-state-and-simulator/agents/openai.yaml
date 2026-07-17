@@ -1,4 +1,0 @@
-interface:
-  display_name: "Build Corthena Frontend State and Simulator"
-  short_description: "Build typed Phase 2 frontend state and simulation"
-  default_prompt: "Use $build-corthena-frontend-state-and-simulator to implement the deterministic Phase 2 frontend architecture."

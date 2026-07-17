@@ -1,6 +1,6 @@
 ---
 name: build-corthena-docking-and-persistence
-description: Build Corthena Phase 4 docking, reusable controls, preferences, responsive scaling, and layout persistence over the completed Phase 1-3 frontend. Use for implementing or changing dock-tree mutations and geometry, widget interaction routing, UI scale preferences, named layouts, background persistence, corruption recovery, migration, or the Phase 4 hidden capture; do not use for Phase 5 charts and tables or domain workflows.
+description: Build Corthena Phase 4 docking, reusable controls, preferences, responsive scaling, and layout persistence over the completed Phase 1-3 ui. Use for implementing or changing dock-tree mutations and geometry, widget interaction routing, UI scale preferences, named layouts, background persistence, corruption recovery, migration, or the Phase 4 hidden capture; do not use for Phase 5 charts and tables or domain workflows.
 ---
 
 # Build Corthena Docking and Persistence

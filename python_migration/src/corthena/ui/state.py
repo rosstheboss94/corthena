@@ -8,6 +8,18 @@ from datetime import datetime
 from enum import StrEnum
 from typing import assert_never
 
+from corthena.ui.data_experiments.actions import (
+    PHASE7_ACTION_TYPES,
+    CancelPhase7,
+    Phase7Action,
+    Phase7Effect,
+)
+from corthena.ui.data_experiments.models import (
+    DataExperimentsState,
+    Phase7LoadState,
+    Phase7Workspace,
+)
+from corthena.ui.data_experiments.reducer import reduce_data_experiments
 from corthena.ui.docking import (
     DockPosition,
     Orientation,
@@ -26,6 +38,25 @@ from corthena.ui.docking import (
     restore,
     set_link_group,
 )
+from corthena.ui.jobs_results.actions import (
+    PHASE8_ACTION_TYPES,
+    CancelPhase8,
+    Phase8Action,
+    Phase8Effect,
+)
+from corthena.ui.jobs_results.models import (
+    JobsResultsState,
+    Phase8LoadState,
+)
+from corthena.ui.jobs_results.reducer import reduce_jobs_results
+from corthena.ui.models_inference.actions import (
+    PHASE9_ACTION_TYPES,
+    CancelPhase9,
+    Phase9Action,
+    Phase9Effect,
+)
+from corthena.ui.models_inference.models import ModelsInferenceState, Phase9LoadState
+from corthena.ui.models_inference.reducer import reduce_models_inference
 from corthena.ui.research.actions import (
     RESEARCH_ACTION_TYPES,
     CancelResearch,
@@ -85,6 +116,40 @@ def _default_workspace_layouts() -> tuple[tuple[Workspace, WorkspaceLayout], ...
     titles = ("Catalog", "Coverage", "Import Queue", "Dataset", "Import Logs")
     values: list[tuple[Workspace, WorkspaceLayout]] = []
     for workspace in Workspace:
+        if workspace is Workspace.DATA:
+            panels = tuple(
+                Panel(f"data-{name}", name, title)
+                for name, title in (
+                    ("catalog", "Catalog"),
+                    ("coverage", "Coverage"),
+                    ("import-queue", "Import Queue"),
+                    ("dataset", "Dataset"),
+                    ("import-logs", "Import Logs"),
+                )
+            )
+            values.append(
+                (workspace, WorkspaceLayout(0, TabStack("data-stack-root", panels, panels[0].id)))
+            )
+            continue
+        if workspace is Workspace.EXPERIMENTS:
+            panels = tuple(
+                Panel(f"experiments-{name}", name, title)
+                for name, title in (
+                    ("list", "Experiments"),
+                    ("configuration", "Configuration"),
+                    ("properties", "Properties"),
+                    ("inspector", "Inspector"),
+                    ("validation", "Validation"),
+                    ("resources", "Resources"),
+                )
+            )
+            values.append(
+                (
+                    workspace,
+                    WorkspaceLayout(0, TabStack("experiments-stack-root", panels, panels[0].id)),
+                )
+            )
+            continue
         if workspace is Workspace.RESEARCH:
             research_titles = (
                 ("ohlcv", "OHLCV"),
@@ -120,6 +185,133 @@ def _default_workspace_layouts() -> tuple[tuple[Workspace, WorkspaceLayout], ...
                     ),
                 )
             )
+            continue
+        if workspace is Workspace.JOBS:
+            panels = tuple(
+                Panel(f"jobs-{name}", name, title)
+                for name, title in (
+                    ("queue", "Jobs"),
+                    ("progress", "Progress"),
+                    ("metrics", "Metrics"),
+                    ("workers", "Workers"),
+                    ("processes", "Processes"),
+                    ("checkpoints", "Checkpoints"),
+                    ("logs", "Logs"),
+                )
+            )
+            root = Split(
+                "jobs-root",
+                Orientation.VERTICAL,
+                0.64,
+                Split(
+                    "jobs-top",
+                    Orientation.HORIZONTAL,
+                    0.58,
+                    TabStack("jobs-queue-stack", panels[:1], panels[0].id),
+                    TabStack("jobs-progress-stack", panels[1:3], panels[1].id),
+                ),
+                Split(
+                    "jobs-bottom",
+                    Orientation.HORIZONTAL,
+                    0.52,
+                    TabStack("jobs-resources-stack", panels[3:6], panels[3].id),
+                    TabStack("jobs-logs-stack", panels[6:], panels[6].id),
+                ),
+            )
+            values.append((workspace, WorkspaceLayout(0, root)))
+            continue
+        if workspace is Workspace.RESULTS:
+            panels = tuple(
+                Panel(f"results-{name}", name, title)
+                for name, title in (
+                    ("runs", "Runs"),
+                    ("metrics", "Metrics"),
+                    ("equity", "Equity"),
+                    ("folds", "Folds"),
+                    ("predictions", "Predictions"),
+                    ("distributions", "Distributions"),
+                    ("config-diff", "Config Diff"),
+                )
+            )
+            root = Split(
+                "results-root",
+                Orientation.VERTICAL,
+                0.62,
+                Split(
+                    "results-top",
+                    Orientation.HORIZONTAL,
+                    0.36,
+                    TabStack("results-runs-stack", panels[:1], panels[0].id),
+                    TabStack("results-analysis-stack", panels[1:5], panels[1].id),
+                ),
+                Split(
+                    "results-bottom",
+                    Orientation.HORIZONTAL,
+                    0.56,
+                    TabStack("results-distributions-stack", panels[5:6], panels[5].id),
+                    TabStack("results-config-stack", panels[6:], panels[6].id),
+                ),
+            )
+            values.append((workspace, WorkspaceLayout(0, root)))
+            continue
+        if workspace is Workspace.MODELS:
+            panels = tuple(
+                Panel(f"models-{name}", name, title)
+                for name, title in (
+                    ("registry", "Model Registry"),
+                    ("aliases", "Aliases & Promotions"),
+                    ("artifact", "Artifact Metadata"),
+                    ("importance", "Feature Importance"),
+                    ("tree", "Tree Inspector"),
+                )
+            )
+            root = Split(
+                "models-root",
+                Orientation.HORIZONTAL,
+                0.38,
+                TabStack("models-registry-stack", panels[:2], panels[0].id),
+                Split(
+                    "models-detail",
+                    Orientation.VERTICAL,
+                    0.55,
+                    TabStack("models-artifact-stack", panels[2:4], panels[2].id),
+                    TabStack("models-tree-stack", panels[4:], panels[4].id),
+                ),
+            )
+            values.append((workspace, WorkspaceLayout(0, root)))
+            continue
+        if workspace is Workspace.INFERENCE:
+            panels = tuple(
+                Panel(f"inference-{name}", name, title)
+                for name, title in (
+                    ("selector", "Model & Dataset"),
+                    ("compatibility", "Compatibility"),
+                    ("rankings", "Ranked Symbols"),
+                    ("distribution", "Score Distribution"),
+                    ("history", "Prediction History"),
+                    ("export", "Export Status"),
+                )
+            )
+            root = Split(
+                "inference-root",
+                Orientation.VERTICAL,
+                0.42,
+                Split(
+                    "inference-controls",
+                    Orientation.HORIZONTAL,
+                    0.5,
+                    TabStack("inference-selector-stack", panels[:1], panels[0].id),
+                    TabStack("inference-compatibility-stack", panels[1:2], panels[1].id),
+                ),
+                Split(
+                    "inference-results",
+                    Orientation.HORIZONTAL,
+                    0.54,
+                    TabStack("inference-rankings-stack", panels[2:4], panels[2].id),
+                    TabStack("inference-history-stack", panels[4:], panels[4].id),
+                ),
+            )
+            values.append((workspace, WorkspaceLayout(0, root)))
             continue
         panels = tuple(
             Panel(f"{workspace.value}-{index}", title.lower().replace(" ", "-"), title)
@@ -195,6 +387,9 @@ class AppState:
     toasts: tuple[str, ...] = ()
     critical_error: str | None = None
     research: ResearchWorkspaceState = field(default_factory=ResearchWorkspaceState)
+    data_experiments: DataExperimentsState = field(default_factory=DataExperimentsState)
+    jobs_results: JobsResultsState = field(default_factory=JobsResultsState)
+    models_inference: ModelsInferenceState = field(default_factory=ModelsInferenceState)
 
     def __post_init__(self) -> None:
         if self.ui_scale_percent not in (100, 125, 150, 175, 200):
@@ -425,6 +620,9 @@ UIAction = (
     | ApplyWorkspaceLayout
     | ResetWorkspaceLayout
     | ResearchAction
+    | Phase7Action
+    | Phase8Action
+    | Phase9Action
 )
 
 
@@ -449,7 +647,9 @@ class CancelRequest:
         _validate_identity(self.request_id, 0)
 
 
-UIEffect = LoadSnapshot | CancelRequest | ResearchEffect
+UIEffect = (
+    LoadSnapshot | CancelRequest | ResearchEffect | Phase7Effect | Phase8Effect | Phase9Effect
+)
 
 
 class InvariantViolationError(RuntimeError):
@@ -502,6 +702,18 @@ def reduce(state: AppState, action: UIAction) -> tuple[AppState, tuple[UIEffect,
         research_action: ResearchAction = action
         research, effects = reduce_research(state.research, research_action)
         return replace(state, research=research), effects
+    if isinstance(action, PHASE7_ACTION_TYPES):
+        phase7_action: Phase7Action = action
+        data_experiments, effects = reduce_data_experiments(state.data_experiments, phase7_action)
+        return replace(state, data_experiments=data_experiments), effects
+    if isinstance(action, PHASE8_ACTION_TYPES):
+        phase8_action: Phase8Action = action
+        jobs_results, effects = reduce_jobs_results(state.jobs_results, phase8_action)
+        return replace(state, jobs_results=jobs_results), effects
+    if isinstance(action, PHASE9_ACTION_TYPES):
+        phase9_action: Phase9Action = action
+        models_inference, effects = reduce_models_inference(state.models_inference, phase9_action)
+        return replace(state, models_inference=models_inference), effects
     match action:
         case RequestSnapshot(request_id=request_id, generation=generation):
             _validate_identity(request_id, generation)
@@ -589,6 +801,9 @@ def reduce(state: AppState, action: UIAction) -> tuple[AppState, tuple[UIEffect,
                     toasts=state.toasts,
                     critical_error=state.critical_error,
                     research=state.research,
+                    data_experiments=state.data_experiments,
+                    jobs_results=state.jobs_results,
+                    models_inference=state.models_inference,
                 ),
                 effects,
             )
@@ -605,6 +820,61 @@ def reduce(state: AppState, action: UIAction) -> tuple[AppState, tuple[UIEffect,
                     for group in state.research.groups
                     if group.query is not None and group.state is ResearchLoadState.LOADING
                 )
+            if (
+                state.workspace in {Workspace.DATA, Workspace.EXPERIMENTS}
+                and state.workspace is not workspace
+            ):
+                phase7_workspace = (
+                    Phase7Workspace.DATA
+                    if state.workspace is Workspace.DATA
+                    else Phase7Workspace.EXPERIMENTS
+                )
+                phase7_state = state.data_experiments.workspace(phase7_workspace)
+                if (
+                    phase7_state.active_request is not None
+                    and phase7_state.state is Phase7LoadState.LOADING
+                ):
+                    effects = (*effects, CancelPhase7(phase7_state.active_request.request_id))
+            if state.workspace is Workspace.JOBS and workspace is not Workspace.JOBS:
+                current_jobs = state.jobs_results.jobs
+                if (
+                    current_jobs.active_request is not None
+                    and current_jobs.state is Phase8LoadState.LOADING
+                ):
+                    effects = (*effects, CancelPhase8(current_jobs.active_request.request_id))
+            if state.workspace is Workspace.RESULTS and workspace is not Workspace.RESULTS:
+                current_results = state.jobs_results.results
+                if (
+                    current_results.active_request is not None
+                    and current_results.state is Phase8LoadState.LOADING
+                ):
+                    effects = (*effects, CancelPhase8(current_results.active_request.request_id))
+                if current_results.active_comparison is not None:
+                    effects = (
+                        *effects,
+                        CancelPhase8(current_results.active_comparison.request_id),
+                    )
+            if state.workspace is Workspace.MODELS and workspace is not Workspace.MODELS:
+                current_models = state.models_inference.models
+                if (
+                    current_models.active_request is not None
+                    and current_models.state is Phase9LoadState.LOADING
+                ):
+                    effects = (*effects, CancelPhase9(current_models.active_request.request_id))
+            if state.workspace is Workspace.INFERENCE and workspace is not Workspace.INFERENCE:
+                current_inference = state.models_inference.inference
+                if (
+                    current_inference.active_request is not None
+                    and current_inference.state is Phase9LoadState.LOADING
+                ):
+                    effects = (*effects, CancelPhase9(current_inference.active_request.request_id))
+                if current_inference.active_inference is not None:
+                    effects = (
+                        *effects,
+                        CancelPhase9(current_inference.active_inference.request_id),
+                    )
+                if current_inference.active_export is not None:
+                    effects = (*effects, CancelPhase9(current_inference.active_export.request_id))
             if workspace is Workspace.RESEARCH:
                 group = state.research.group("link-default-research")
                 if group is None or group.query is None:

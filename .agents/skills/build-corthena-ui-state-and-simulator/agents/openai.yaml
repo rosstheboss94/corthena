@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Corthena UI State and Simulator"
+  short_description: "Build typed Phase 2 ui state and simulation"
+  default_prompt: "Use $build-corthena-ui-state-and-simulator to implement the deterministic Phase 2 ui architecture."

@@ -1,11 +1,11 @@
 ---
-name: build-corthena-raylib-frontend
-description: Build or change Corthena's Windows Raylib frontend scaffold, adapters, UI-thread ownership, frame loop, assets, or shell launch.
+name: build-corthena-raylib-ui
+description: Build or change Corthena's Windows Raylib ui scaffold, adapters, UI-thread ownership, frame loop, assets, or shell launch.
 ---
 
-# Build Corthena Raylib Frontend
+# Build Corthena Raylib UI
 
-Implement frontend changes without leaking native types, moving domain behavior
+Implement ui changes without leaking native types, moving domain behavior
 into rendering code, or violating the locked-thread and asynchronous-work
 boundaries.
 
@@ -14,9 +14,9 @@ boundaries.
 1. Read `python_migration/AGENTS.md`.
 2. Read the requested phase in `python_migration/specs/roadmap.md`,
    `python_migration/specs/technology-stack.md`, `python_migration/specs/quality.md`, and
-   `python_migration/specs/frontend/foundation.md`.
-3. Read `python_migration/specs/frontend/workspaces.md` or
-   `python_migration/specs/frontend/visualization.md` only when the task reaches those
+   `python_migration/specs/ui/foundation.md`.
+3. Read `python_migration/specs/ui/workspaces.md` or
+   `python_migration/specs/ui/visualization.md` only when the task reaches those
    behaviors. Read `python_migration/specs/api.md` for public client or process-boundary work.
 4. Inspect `python_migration/screenshots/` only for an explicitly visual-design task.
 5. Inspect the current workspace and preserve unrelated changes.
@@ -27,7 +27,7 @@ boundaries.
 
 - Create only commands and package ownership required by the current roadmap
   phase. For Phase 1, create the named workstation project entry point and the
-  smallest owned `corthena.frontend` package needed for an empty frame loop.
+  smallest owned `corthena.ui` package needed for an empty frame loop.
   Do not implement Phase 2+ state, effects, simulator, docking, workspace,
   visualization, persistence, client, or domain behavior.
 - For Phase 12, create the Python command/package surfaces defined by the
@@ -50,11 +50,11 @@ boundaries.
 
 - Treat `specs/routing/phase-1.md` as the Phase 1 reading and evidence map.
 - Add one named workstation project script whose callable delegates immediately
-  to owned frontend startup code. Do not reuse the Phase 0 compatibility-gate
+  to owned ui startup code. Do not reuse the Phase 0 compatibility-gate
   command as the workstation entry point.
 - Put Raylib, Raygui, and Windows conversions behind a narrow typed native
   adapter. Keep native structs, handles, pointers, and weakly typed binding
-  values out of the entry point and frontend state.
+  values out of the entry point and ui state.
 - Validate bundled Inter and JetBrains Mono fonts, Lucide-derived icon data,
   and applicable license notices before any native initialization.
 - Make the empty loop bounded under smoke-test configuration, render at least

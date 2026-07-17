@@ -12,13 +12,13 @@ or export work on the render thread.
 ## Ground the change
 
 1. Read `python_migration/AGENTS.md`, `python_migration/specs/routing/phase-9.md`,
-   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
+   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
    `python_migration/specs/models.md`, `python_migration/specs/evaluation-and-inference.md`, and
    `python_migration/specs/quality.md`.
 2. Read `python_migration/specs/api.md` for client or DTO changes,
-   `python_migration/specs/frontend/visualization.md` for chart, tree, or virtual-table changes,
+   `python_migration/specs/ui/visualization.md` for chart, tree, or virtual-table changes,
    and `python_migration/specs/technology-stack.md` for dependency or tooling changes.
-3. Inspect the existing app state, actions/effects, `FrontendClient`,
+3. Inspect the existing app state, actions/effects, `UIClient`,
    `DemoCoordinator`, Phase 8 reconciliation patterns, layouts, charts, tables,
    and golden harness. Preserve unrelated workspace changes.
 
@@ -26,10 +26,10 @@ or export work on the render thread.
 
 - Add concrete validated request, response, registry, alias-history, artifact,
   compatibility, prediction, ranking, and export values. Keep API DTOs separate
-  from frontend and domain values.
+  from ui and domain values.
 - Make model, run, dataset revision/fingerprint, range, correlation, generation,
   command, inference, and export identities explicit where applicable.
-- Extend `FrontendClient`, `UIEffect`, the bounded effects runtime, reducers,
+- Extend `UIClient`, `UIEffect`, the bounded effects runtime, reducers,
   and `DemoCoordinator` together. Panels consume typed state and emit actions;
   they never import or branch on simulator details.
 - Clone slices at publication boundaries, preserve stable ordering, reject stale
@@ -82,7 +82,7 @@ or export work on the render thread.
   workspace generation rather than overwrite richer state.
 - Cover normal, loading, empty, incompatible, failure, degraded, recovered,
   canceled, and saturated conditions without replacing dock layouts.
-- Keep Phase 9 frontend-only: do not implement estimator fitting, artifact
+- Keep Phase 9 ui-only: do not implement estimator fitting, artifact
   filesystem persistence, coordinator repositories, or real HTTP endpoints.
 
 ## Verify before handoff

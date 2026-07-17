@@ -1,9 +1,9 @@
 ---
-name: verify-corthena-frontend-state-and-simulator
-description: Verify Phase 2 typed frontend state, pure reducers, bounded asynchronous effects, FrontendClient separation, deterministic simulator replay, generations, cancellation, and lifecycle safety. Use for Phase 2 acceptance, regression testing, or audits.
+name: verify-corthena-ui-state-and-simulator
+description: Verify Phase 2 typed ui state, pure reducers, bounded asynchronous effects, UIClient separation, deterministic simulator replay, generations, cancellation, and lifecycle safety. Use for Phase 2 acceptance, regression testing, or audits.
 ---
 
-# Verify Corthena Frontend State and Simulator
+# Verify Corthena UI State and Simulator
 
 Produce repeatable evidence that Phase 2 is typed, deterministic, bounded, and
 safe to replace with a real backend later.
@@ -27,9 +27,9 @@ safe to replace with a real backend later.
 - Replay identical seeds, fixed clocks, and action sequences while varying
   worker counts and completion orders. Require identical state, effects,
   requests, simulator responses, and request identities.
-- Fail if frontend state, reducers, or future panels import simulator packages,
+- Fail if ui state, reducers, or future panels import simulator packages,
   expose simulator values, or branch on simulator implementation details
-  instead of the narrow `FrontendClient` contract.
+  instead of the narrow `UIClient` contract.
 
 ## Verify concurrency and lifecycle
 

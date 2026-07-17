@@ -12,8 +12,8 @@ thread.
 ## Ground the change
 
 1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
-   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
-   `python_migration/specs/frontend/visualization.md`, `python_migration/specs/data-and-features.md`, and
+   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
+   `python_migration/specs/ui/visualization.md`, `python_migration/specs/data-and-features.md`, and
    `python_migration/specs/quality.md`.
 2. Read `python_migration/specs/api.md` for client or Arrow boundary changes. Read
    `python_migration/specs/technology-stack.md` for dependency or native-adapter changes.
@@ -30,7 +30,7 @@ thread.
   as applicable. Normalize UTC ranges and reject invalid combinations.
 - Keep Arrow objects inside adapters. Publish client-owned typed slices or
   Phase 5 render-ready buffers; clone mutable slices at boundaries.
-- Extend `FrontendClient`, effects, and `DemoCoordinator` together. Panels must
+- Extend `UIClient`, effects, and `DemoCoordinator` together. Panels must
   depend only on typed state/actions/effects and never import the simulator.
 - Update `python_migration/specs/api.md` when a public or process contract changes; do not define
   real coordinator endpoints solely to satisfy the demo implementation.

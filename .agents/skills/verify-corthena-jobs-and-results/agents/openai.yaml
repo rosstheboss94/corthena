@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Corthena Jobs and Results"
+  short_description: "Verify Phase 8 job and result workflows"
+  default_prompt: "Use $verify-corthena-jobs-and-results to verify a Phase 8 Jobs or Results workflow."

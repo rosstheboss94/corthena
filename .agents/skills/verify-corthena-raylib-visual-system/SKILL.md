@@ -12,7 +12,7 @@ Treat missing evidence as a verification failure, not permission to infer pass.
 
 1. Read `python_migration/AGENTS.md`,
    `python_migration/specs/design-pattern.md`,
-   `python_migration/specs/frontend/raylib-visual-system.md`, the owning
+   `python_migration/specs/ui/raylib-visual-system.md`, the owning
    subsystem specification, and `python_migration/specs/quality.md`.
 2. Locate the applicable canonical manifest and PNG family under
    `internal/app/workstation/testdata/`. Record its viewport, scale, scenario,

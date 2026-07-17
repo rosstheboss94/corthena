@@ -12,12 +12,12 @@ thread.
 ## Ground the change
 
 1. Read `python_migration/AGENTS.md`, `python_migration/specs/routing/phase-7.md`,
-   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
+   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
    `python_migration/specs/data-and-features.md`, and `python_migration/specs/quality.md`.
 2. Read `python_migration/specs/api.md` for client or DTO changes, `python_migration/specs/technology-stack.md`
    for dependency/tooling changes, and `python_migration/specs/README.md` when ownership spans
-   Data, Experiments, and frontend state.
-3. Inspect the existing app state/actions/effects, `FrontendClient`,
+   Data, Experiments, and ui state.
+3. Inspect the existing app state/actions/effects, `UIClient`,
    `DemoCoordinator`, layouts, controls, virtual tables, and Phase 6 patterns.
    Preserve unrelated workspace changes.
 
@@ -28,7 +28,7 @@ thread.
 - Make request identity explicit: dataset/revision, source kind, symbols,
   interval, replacement range or append mode, correlation ID, generation,
   draft revision, and immutable submission ID as applicable.
-- Extend `FrontendClient`, `UIEffect`, the effects runtime, and
+- Extend `UIClient`, `UIEffect`, the effects runtime, and
   `DemoCoordinator` together. Panels depend only on typed state/actions and
   must not import simulator packages or type-switch on simulator values.
 - Reject invalid source/range combinations, duplicate IDs, invalid intervals,

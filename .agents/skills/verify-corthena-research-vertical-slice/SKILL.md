@@ -12,8 +12,8 @@ boundary.
 ## Ground verification
 
 1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
-   `python_migration/specs/frontend/workspaces.md`, `python_migration/specs/frontend/foundation.md`,
-   `python_migration/specs/frontend/visualization.md`, `python_migration/specs/data-and-features.md`,
+   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
+   `python_migration/specs/ui/visualization.md`, `python_migration/specs/data-and-features.md`,
    `python_migration/specs/api.md`, and `python_migration/specs/quality.md`.
 2. Inspect Research app state, actions/effects, client types, simulator data,
    panel renderers, Phase 5 kernels, existing tests, benchmarks, and golden
@@ -23,7 +23,7 @@ boundary.
 
 ## Verify the typed client workflow
 
-- Exercise every Research request through `FrontendClient` and the effects
+- Exercise every Research request through `UIClient` and the effects
   runtime; fail if a panel imports or type-switches on simulator details.
 - Validate dataset, symbol, interval, range, resolution, series, target, cursor,
   correlation, and generation fields at their owning boundaries.

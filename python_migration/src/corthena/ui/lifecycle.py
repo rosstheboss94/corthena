@@ -9,8 +9,31 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from corthena.ui.assets import AssetLease
+from corthena.ui.data_experiments.actions import RequestPhase7
+from corthena.ui.data_experiments.models import (
+    Phase7Request,
+    Phase7Scenario,
+    Phase7Workspace,
+)
 from corthena.ui.effects import EffectsRuntime, EnqueueState, RuntimeConfig
 from corthena.ui.golden import encode_rgba_png
+from corthena.ui.jobs_results.actions import RequestComparison, RequestPhase8
+from corthena.ui.jobs_results.models import (
+    ComparisonQuery,
+    Phase8LoadState,
+    Phase8Request,
+    Phase8Scenario,
+    Phase8Workspace,
+)
+from corthena.ui.models_inference.actions import RequestInference, RequestPhase9
+from corthena.ui.models_inference.models import (
+    InferenceMode,
+    InferenceQuery,
+    Phase9LoadState,
+    Phase9Request,
+    Phase9Scenario,
+    Phase9Workspace,
+)
 from corthena.ui.native.models import CapturedFrame, WindowSize
 from corthena.ui.native.protocol import NativeUIProtocol
 from corthena.ui.native.raylib import RaylibUIAdapter
@@ -62,6 +85,12 @@ class LaunchConfig:
     visualization_fixture: bool = False
     research_scenario: ResearchScenario | None = None
     research_linked_selection: bool = False
+    phase7_workspace: Phase7Workspace | None = None
+    phase7_scenario: Phase7Scenario = Phase7Scenario.NORMAL
+    phase8_workspace: Phase8Workspace | None = None
+    phase8_scenario: Phase8Scenario = Phase8Scenario.JOBS_SUCCESS
+    phase9_workspace: Phase9Workspace | None = None
+    phase9_scenario: Phase9Scenario = Phase9Scenario.MODELS_NORMAL
     persistence_directory: Path | None = None
 
     def __post_init__(self) -> None:
@@ -112,10 +141,76 @@ def launch(
                 RequestResearch(default_research_query(scenario=config.research_scenario)),
             )
             startup_effects = (*startup_effects, *research_effects)
+        if config.phase7_workspace is not None:
+            shell_workspace = (
+                Workspace.DATA
+                if config.phase7_workspace is Phase7Workspace.DATA
+                else Workspace.EXPERIMENTS
+            )
+            state, _ = reduce(state, SelectWorkspace(shell_workspace))
+            state, phase7_effects = reduce(
+                state,
+                RequestPhase7(
+                    Phase7Request(
+                        f"phase7-{config.phase7_workspace.value}-00000000000000000001",
+                        1,
+                        config.phase7_workspace,
+                        config.phase7_scenario,
+                    )
+                ),
+            )
+            startup_effects = (*startup_effects, *phase7_effects)
+        if config.phase8_workspace is not None:
+            shell_workspace = (
+                Workspace.JOBS
+                if config.phase8_workspace is Phase8Workspace.JOBS
+                else Workspace.RESULTS
+            )
+            state, _ = reduce(state, SelectWorkspace(shell_workspace))
+            state, phase8_effects = reduce(
+                state,
+                RequestPhase8(
+                    Phase8Request(
+                        f"phase8-{config.phase8_workspace.value}-00000000000000000001",
+                        1,
+                        config.phase8_workspace,
+                        config.phase8_scenario,
+                    )
+                ),
+            )
+            startup_effects = (*startup_effects, *phase8_effects)
+        if config.phase9_workspace is not None:
+            shell_workspace = (
+                Workspace.MODELS
+                if config.phase9_workspace is Phase9Workspace.MODELS
+                else Workspace.INFERENCE
+            )
+            state, _ = reduce(state, SelectWorkspace(shell_workspace))
+            state, phase9_effects = reduce(
+                state,
+                RequestPhase9(
+                    Phase9Request(
+                        f"phase9-{config.phase9_workspace.value}-00000000000000000001",
+                        1,
+                        config.phase9_workspace,
+                        config.phase9_scenario,
+                    )
+                ),
+            )
+            startup_effects = (*startup_effects, *phase9_effects)
         chart_fit = VisualizationRect(0, 0, 100, 100)
         chart_state = ChartInteractionState(1, chart_fit, chart_fit)
         simulator = DeterministicSimulator(
-            SimulatorConfig(42, datetime(2026, 7, 10, 12, tzinfo=UTC))
+            SimulatorConfig(
+                209
+                if config.phase9_workspace is not None
+                else 208
+                if config.phase8_workspace is not None
+                else 107
+                if config.phase7_workspace is not None
+                else 42,
+                datetime(2026, 7, 10, 12, tzinfo=UTC),
+            )
         )
         effective_runtime_config = RuntimeConfig() if runtime_config is None else runtime_config
         runtime = EffectsRuntime(simulator, effective_runtime_config)
@@ -164,6 +259,73 @@ def launch(
                     state, effects = reduce(state, action)
                     for effect in effects:
                         runtime.enqueue(effect)
+                results = state.jobs_results.results
+                if (
+                    state.workspace is Workspace.RESULTS
+                    and results.state
+                    in {
+                        Phase8LoadState.READY,
+                        Phase8LoadState.DEGRADED,
+                        Phase8LoadState.RECOVERED,
+                    }
+                    and results.selected_run_ids
+                    and results.comparison is None
+                    and results.active_comparison is None
+                ):
+                    comparison_generation = results.comparison_generation + 1
+                    state, comparison_effects = reduce(
+                        state,
+                        RequestComparison(
+                            ComparisonQuery(
+                                f"phase8-comparison-{comparison_generation:020d}",
+                                comparison_generation,
+                                results.selected_run_ids,
+                            )
+                        ),
+                    )
+                    for effect in comparison_effects:
+                        runtime.enqueue(effect)
+                inference = state.models_inference.inference
+                if (
+                    state.workspace is Workspace.INFERENCE
+                    and inference.state
+                    in {
+                        Phase9LoadState.READY,
+                        Phase9LoadState.DEGRADED,
+                        Phase9LoadState.RECOVERED,
+                    }
+                    and inference.inference is None
+                    and inference.active_inference is None
+                ):
+                    generation = inference.generation + 1
+                    mode = (
+                        InferenceMode.LATEST
+                        if config.phase9_scenario is Phase9Scenario.INFERENCE_LATEST
+                        else InferenceMode.HISTORICAL
+                    )
+                    state, inference_effects = reduce(
+                        state,
+                        RequestInference(
+                            InferenceQuery(
+                                f"phase9-inference-{generation:020d}",
+                                generation,
+                                inference.selected_model_or_alias,
+                                "dataset-us-equities",
+                                "incompatible-fingerprint"
+                                if config.phase9_scenario is Phase9Scenario.INFERENCE_INCOMPATIBLE
+                                else "dataset-fingerprint-phase9",
+                                mode,
+                                None
+                                if mode is InferenceMode.LATEST
+                                else datetime(2026, 6, 1, tzinfo=UTC),
+                                None
+                                if mode is InferenceMode.LATEST
+                                else datetime(2026, 7, 1, tzinfo=UTC),
+                            )
+                        ),
+                    )
+                    for effect in inference_effects:
+                        runtime.enqueue(effect)
                 group = state.research.group("link-default-research")
                 if (
                     linked_selection_pending
@@ -192,7 +354,11 @@ def launch(
                     width=metrics.width,
                     height=metrics.height,
                     dpi_scale=metrics.dpi_scale,
-                    fps=metrics.fps,
+                    fps=60
+                    if config.phase7_workspace is not None
+                    or config.phase8_workspace is not None
+                    or config.phase9_workspace is not None
+                    else metrics.fps,
                 )
                 if config.visualization_fixture:
                     for chart_action in adapter.render_visualization(
