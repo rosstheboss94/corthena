@@ -10,12 +10,12 @@ Treat missing evidence as a verification failure, not permission to infer pass.
 
 ## Establish the contract
 
-1. Read `python_migration/AGENTS.md`,
-   `python_migration/specs/design-pattern.md`,
-   `python_migration/specs/ui/raylib-visual-system.md`, the owning
-   subsystem specification, and `python_migration/specs/quality.md`.
+1. Read `AGENTS.md`,
+   `specs/design-pattern.md`,
+   `specs/ui/raylib-visual-system.md`, the owning
+   subsystem specification, and `specs/quality.md`.
 2. Locate the applicable canonical manifest and PNG family under
-   `internal/app/workstation/testdata/`. Record its viewport, scale, scenario,
+   `tests/goldens/`. Record its viewport, scale, scenario,
    seed, clock, fixture/state, layout, asset fingerprint, backend, build
    identity, channel tolerance, and maximum differing-pixel ratio.
 3. Inspect the change and workspace without modifying implementation. Use JPEG

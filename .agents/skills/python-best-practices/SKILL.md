@@ -7,9 +7,9 @@ description: Implement, refactor, test, or review Python or Cython code in Corth
 
 ## Ground the work
 
-1. Inspect `python_migration/AGENTS.md`, the current workspace, and the owning
+1. Inspect `AGENTS.md`, the current workspace, and the owning
    specification before planning or editing. Follow its routing table; read
-   `python_migration/specs/README.md` when ownership crosses documents.
+   `specs/README.md` when ownership crosses documents.
 2. Preserve unrelated changes. Treat living specifications as canonical and
    report conflicts rather than resolving them silently.
 3. Update the owning specification for behavioral or public-contract changes.

@@ -11,9 +11,9 @@ adapter.
 
 ## Ground verification
 
-1. Read `python_migration/AGENTS.md`, `python_migration/specs/contract.md`,
-   `python_migration/specs/design-pattern.md`, and
-   `python_migration/specs/routing/phase-8.md` before selecting checks.
+1. Read `AGENTS.md`, `specs/contract.md`,
+   `specs/design-pattern.md`, and
+   `specs/routing/phase-8.md` before selecting checks.
 2. Read the route-required Jobs, Results, async-effects, training-runtime,
    evaluation, common-quality, and concurrency-quality specifications. Add
    `api.md` for public/process boundary checks and `ui/visualization.md` plus

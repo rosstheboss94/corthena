@@ -1,26 +1,26 @@
 # Corthena Migration Rules
 
-Use `python_migration/AGENTS.md` as the authoritative routing index. Read the
+Use `AGENTS.md` as the authoritative routing index. Read the
 owning specification rather than duplicating it here.
 
 ## Authoritative sources
 
-- Route and ownership: `python_migration/AGENTS.md`,
-  `python_migration/specs/README.md`, and relevant
-  `python_migration/specs/routing/phase-*.md`.
-- Migration and approved stack: `python_migration/specs/python-migration.md`,
-  `python_migration/specs/migration-baseline.md`, and
-  `python_migration/specs/technology-stack.md`.
-- Quality and verification: `python_migration/specs/quality.md` plus applicable
-  `python_migration/specs/quality-*.md` documents.
-- Native UI: `python_migration/specs/ui/foundation.md`; use
-  `python_migration/specs/ui/workspaces.md` or
-  `python_migration/specs/ui/visualization.md` when those behaviors are involved.
+- Route and ownership: `AGENTS.md`,
+  `specs/README.md`, and relevant
+  `specs/routing/phase-*.md`.
+- Migration and approved stack: `specs/python-migration.md`,
+  `specs/migration-baseline.md`, and
+  `specs/technology-stack.md`.
+- Quality and verification: `specs/quality.md` plus applicable
+  `specs/quality-*.md` documents.
+- Native UI: `specs/ui/foundation.md`; use
+  `specs/ui/workspaces.md` or
+  `specs/ui/visualization.md` when those behaviors are involved.
 
 ## Non-negotiables
 
-- Keep the pre-migration root implementation available as the parity reference
-  until Python rewrite parity is accepted.
+- Treat the root Python/Cython implementation and `tests/goldens/` evidence as
+  authoritative after the accepted repository cutover.
 - Use CPython and `uv`; use Cython only for measured hot paths or native
   adapters; admit dependencies only through the approved-stack process.
 - Keep all Raylib/Raygui calls on one locked UI OS thread; keep blocking work

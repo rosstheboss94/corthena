@@ -7,8 +7,8 @@ description: Build Corthena Phase 3's deterministic visual application shell ove
 
 ## Ground the implementation
 
-1. Read `python_migration/AGENTS.md` and every required document in
-   `python_migration/specs/routing/phase-3.md` before editing.
+1. Read `AGENTS.md` and every required document in
+   `specs/routing/phase-3.md` before editing.
 2. Treat the living specs and manifest-owned Go PNG as canonical. Update the
    owning spec first if behavior or a public contract changes.
 3. Preserve the existing Phase 1 lifecycle and Phase 2 typed state, reducer,

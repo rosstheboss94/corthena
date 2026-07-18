@@ -11,10 +11,10 @@ boundary.
 
 ## Ground verification
 
-1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
-   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
-   `python_migration/specs/ui/visualization.md`, `python_migration/specs/data-and-features.md`,
-   `python_migration/specs/api.md`, and `python_migration/specs/quality.md`.
+1. Read `AGENTS.md`, `specs/roadmap.md`,
+   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
+   `specs/ui/visualization.md`, `specs/data-and-features.md`,
+   `specs/api.md`, and `specs/quality.md`.
 2. Inspect Research app state, actions/effects, client types, simulator data,
    panel renderers, Phase 5 kernels, existing tests, benchmarks, and golden
    harness before selecting checks. Preserve unrelated changes.

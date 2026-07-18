@@ -10,12 +10,12 @@ without changing unrelated visuals or moving behavior into rendering code.
 
 ## Ground the change
 
-1. Read `python_migration/AGENTS.md`,
-   `python_migration/specs/design-pattern.md`, and
-   `python_migration/specs/ui/raylib-visual-system.md` completely.
+1. Read `AGENTS.md`,
+   `specs/design-pattern.md`, and
+   `specs/ui/raylib-visual-system.md` completely.
 2. Read the owning shell, workspace, visualization, and quality specifications
    selected by `AGENTS.md`. Read the applicable canonical PNG manifest under
-   `internal/app/workstation/testdata/`.
+   `tests/goldens/`.
 3. Inspect relevant canonical PNGs. Use Phase 1–9 JPEG screenshots only as
    design references, never comparison baselines.
 4. Inspect the workspace and preserve unrelated changes and visuals.

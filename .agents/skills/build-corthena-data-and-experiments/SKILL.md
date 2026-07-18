@@ -11,11 +11,11 @@ thread.
 
 ## Ground the change
 
-1. Read `python_migration/AGENTS.md`, `python_migration/specs/routing/phase-7.md`,
-   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
-   `python_migration/specs/data-and-features.md`, and `python_migration/specs/quality.md`.
-2. Read `python_migration/specs/api.md` for client or DTO changes, `python_migration/specs/technology-stack.md`
-   for dependency/tooling changes, and `python_migration/specs/README.md` when ownership spans
+1. Read `AGENTS.md`, `specs/routing/phase-7.md`,
+   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
+   `specs/data-and-features.md`, and `specs/quality.md`.
+2. Read `specs/api.md` for client or DTO changes, `specs/technology-stack.md`
+   for dependency/tooling changes, and `specs/README.md` when ownership spans
    Data, Experiments, and ui state.
 3. Inspect the existing app state/actions/effects, `UIClient`,
    `DemoCoordinator`, layouts, controls, virtual tables, and Phase 6 patterns.
@@ -34,7 +34,7 @@ thread.
 - Reject invalid source/range combinations, duplicate IDs, invalid intervals,
   invalid split/model/feature configurations, stale draft revisions, and
   mutable resubmission attempts at their owning boundaries.
-- Update `python_migration/specs/api.md` only when a public/process contract changes; internal
+- Update `specs/api.md` only when a public/process contract changes; internal
   demo contracts do not define future coordinator endpoints.
 
 ## Build deterministic Data behavior
@@ -50,7 +50,7 @@ thread.
   failure or cancellation.
 - Keep timestamp normalization, `(symbol, timestamp)` ordering, OHLC checks,
   finite prices, nonnegative volume, and correction-range rules consistent
-  with `python_migration/specs/data-and-features.md`. Do not simulate future data to satisfy a
+  with `specs/data-and-features.md`. Do not simulate future data to satisfy a
   visible range.
 - Run preparation, filtering, sorting, validation, delays, and autosave I/O
   on owned cancellable workers. Reuse the existing bounded effect runtime,

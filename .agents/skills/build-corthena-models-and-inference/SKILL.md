@@ -11,13 +11,13 @@ or export work on the render thread.
 
 ## Ground the change
 
-1. Read `python_migration/AGENTS.md`, `python_migration/specs/routing/phase-9.md`,
-   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
-   `python_migration/specs/models.md`, `python_migration/specs/evaluation-and-inference.md`, and
-   `python_migration/specs/quality.md`.
-2. Read `python_migration/specs/api.md` for client or DTO changes,
-   `python_migration/specs/ui/visualization.md` for chart, tree, or virtual-table changes,
-   and `python_migration/specs/technology-stack.md` for dependency or tooling changes.
+1. Read `AGENTS.md`, `specs/routing/phase-9.md`,
+   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
+   `specs/models.md`, `specs/evaluation-and-inference.md`, and
+   `specs/quality.md`.
+2. Read `specs/api.md` for client or DTO changes,
+   `specs/ui/visualization.md` for chart, tree, or virtual-table changes,
+   and `specs/technology-stack.md` for dependency or tooling changes.
 3. Inspect the existing app state, actions/effects, `UIClient`,
    `DemoCoordinator`, Phase 8 reconciliation patterns, layouts, charts, tables,
    and golden harness. Preserve unrelated workspace changes.
@@ -34,7 +34,7 @@ or export work on the render thread.
   they never import or branch on simulator details.
 - Clone slices at publication boundaries, preserve stable ordering, reject stale
   generations, and make mutating command retries idempotent by command ID.
-- Update `python_migration/specs/api.md` only for a real public or process contract. Internal
+- Update `specs/api.md` only for a real public or process contract. Internal
   Phase 9 demo methods do not define future coordinator endpoints.
 
 ## Build the Models workspace
@@ -92,6 +92,6 @@ or export work on the render thread.
   replay, benchmark, and golden tests.
 - Hand off to `$verify-corthena-models-and-inference`; add visualization
   verification for chart, table, tree, cache, or render-buffer changes.
-- Apply the focused quality route in `python_migration/specs/routing/phase-9.md`; use
+- Apply the focused quality route in `specs/routing/phase-9.md`; use
   `$python-windows-compat-gate` only for dependency, native, toolchain, or shell
   changes. Update living specifications for behavior or contract changes.

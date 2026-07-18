@@ -11,12 +11,12 @@ thread.
 
 ## Ground the change
 
-1. Read `python_migration/AGENTS.md`, `python_migration/specs/roadmap.md`,
-   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
-   `python_migration/specs/ui/visualization.md`, `python_migration/specs/data-and-features.md`, and
-   `python_migration/specs/quality.md`.
-2. Read `python_migration/specs/api.md` for client or Arrow boundary changes. Read
-   `python_migration/specs/technology-stack.md` for dependency or native-adapter changes.
+1. Read `AGENTS.md`, `specs/roadmap.md`,
+   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
+   `specs/ui/visualization.md`, `specs/data-and-features.md`, and
+   `specs/quality.md`.
+2. Read `specs/api.md` for client or Arrow boundary changes. Read
+   `specs/technology-stack.md` for dependency or native-adapter changes.
 3. Inspect the existing app state, effects runtime, simulator, link groups,
    Phase 5 chart/table packages, and native renderer before adding types or
    packages. Preserve unrelated workspace changes.
@@ -32,7 +32,7 @@ thread.
   Phase 5 render-ready buffers; clone mutable slices at boundaries.
 - Extend `UIClient`, effects, and `DemoCoordinator` together. Panels must
   depend only on typed state/actions/effects and never import the simulator.
-- Update `python_migration/specs/api.md` when a public or process contract changes; do not define
+- Update `specs/api.md` when a public or process contract changes; do not define
   real coordinator endpoints solely to satisfy the demo implementation.
 
 ## Build deterministic asynchronous behavior

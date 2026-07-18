@@ -10,8 +10,8 @@ visual shell or real coordinator behavior.
 
 ## Ground the change
 
-1. Read `python_migration/AGENTS.md` and
-   `python_migration/specs/routing/phase-2.md`, then every required spec in the
+1. Read `AGENTS.md` and
+   `specs/routing/phase-2.md`, then every required spec in the
    route.
 2. Read conditional specs only when their trigger applies. Update the owning
    living spec before changing behavior or a public contract.

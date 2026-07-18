@@ -9,8 +9,8 @@ Perform an evidence-based, read-only review. Prioritize defects that can affect 
 
 ## Establish the review target
 
-1. Treat `python_migration/` as the migration workspace root and
-   `python_migration/AGENTS.md` as its routing authority.
+1. Treat the repository root as the Python workspace root and
+   `AGENTS.md` as its routing authority.
 2. Use an explicit user-supplied file set, diff, commit, or range when provided.
 3. Otherwise inspect staged, unstaged, and untracked changes within the workspace root.
 4. Confine every search, status, and diff operation to the workspace root. Never enumerate or review paths above it.
@@ -19,11 +19,11 @@ Perform an evidence-based, read-only review. Prioritize defects that can affect 
 
 ## Ground the review
 
-1. Read `python_migration/AGENTS.md`.
-2. Read `python_migration/specs/quality.md` and only the owning specifications selected by its routing table.
-3. Read `python_migration/specs/README.md` when the change crosses subsystem boundaries or ownership is unclear.
-4. Read `python_migration/specs/technology-stack.md` for dependency, packaging, build, extension, or tooling changes.
-5. Read `python_migration/specs/api.md` for public or process-boundary changes, plus the owning domain specification.
+1. Read `AGENTS.md`.
+2. Read `specs/quality.md` and only the owning specifications selected by its routing table.
+3. Read `specs/README.md` when the change crosses subsystem boundaries or ownership is unclear.
+4. Read `specs/technology-stack.md` for dependency, packaging, build, extension, or tooling changes.
+5. Read `specs/api.md` for public or process-boundary changes, plus the owning domain specification.
 6. Inspect `screenshots/` only for visual-design changes.
 7. Treat living specifications as canonical. Report code/specification conflicts rather than silently choosing one.
 8. Check whether changed behavior or a public contract also updates its canonical specification. Require an ADR only for a decision with meaningful alternatives and lasting consequences.

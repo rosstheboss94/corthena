@@ -11,9 +11,9 @@ future backend replacement.
 
 ## Ground verification
 
-1. Read `python_migration/AGENTS.md`, `python_migration/specs/routing/phase-7.md`,
-   `python_migration/specs/ui/workspaces.md`, `python_migration/specs/ui/foundation.md`,
-   `python_migration/specs/data-and-features.md`, `python_migration/specs/quality.md`, and `python_migration/specs/api.md`.
+1. Read `AGENTS.md`, `specs/routing/phase-7.md`,
+   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
+   `specs/data-and-features.md`, `specs/quality.md`, and `specs/api.md`.
 2. Inspect Data/Experiments state, actions/effects, client types, simulator,
    renderers, layout/link groups, persistence workers, virtual tables, and
    existing tests before selecting checks. Preserve unrelated changes.

@@ -11,14 +11,14 @@ boundaries.
 
 ## Ground the change
 
-1. Read `python_migration/AGENTS.md`.
-2. Read the requested phase in `python_migration/specs/roadmap.md`,
-   `python_migration/specs/technology-stack.md`, `python_migration/specs/quality.md`, and
-   `python_migration/specs/ui/foundation.md`.
-3. Read `python_migration/specs/ui/workspaces.md` or
-   `python_migration/specs/ui/visualization.md` only when the task reaches those
-   behaviors. Read `python_migration/specs/api.md` for public client or process-boundary work.
-4. Inspect `python_migration/screenshots/` only for an explicitly visual-design task.
+1. Read `AGENTS.md`.
+2. Read the requested phase in `specs/roadmap.md`,
+   `specs/technology-stack.md`, `specs/quality.md`, and
+   `specs/ui/foundation.md`.
+3. Read `specs/ui/workspaces.md` or
+   `specs/ui/visualization.md` only when the task reaches those
+   behaviors. Read `specs/api.md` for public client or process-boundary work.
+4. Inspect `screenshots/` only for an explicitly visual-design task.
 5. Inspect the current workspace and preserve unrelated changes.
 6. Treat living specifications as canonical and report conflicts rather than
    choosing silently.
