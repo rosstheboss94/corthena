@@ -11,10 +11,10 @@ the future real Python client.
 
 ## Ground verification
 
-1. Read `AGENTS.md`, `specs/routing/phase-9.md`,
-   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
-   `specs/models.md`, `specs/evaluation-and-inference.md`, `specs/api.md`,
-   `specs/ui/visualization.md`, and `specs/quality.md`.
+1. Read `AGENTS.md`, `specs/history/routing/phase-9.md`,
+   `specs/general/ui/workspaces.md`, `specs/general/ui/README.md`,
+   `specs/pages/models/README.md`, `specs/pages/results/README.md`, `specs/general/api.md`,
+   `specs/general/ui/visualization.md`, and `specs/general/quality/README.md`.
 2. Inspect Models/Inference state, actions/effects, client types, simulator,
    renderers, layouts, charts, virtual tables, tree buffers, tests, benchmarks,
    and golden harness before selecting checks. Preserve unrelated changes.

@@ -11,8 +11,8 @@ without changing unrelated visuals or moving behavior into rendering code.
 ## Ground the change
 
 1. Read `AGENTS.md`,
-   `specs/design-pattern.md`, and
-   `specs/ui/raylib-visual-system.md` completely.
+   `specs/general/design-pattern.md`, and
+   `specs/general/ui/visual-system.md` completely.
 2. Read the owning shell, workspace, visualization, and quality specifications
    selected by `AGENTS.md`. Read the applicable canonical PNG manifest under
    `tests/goldens/`.

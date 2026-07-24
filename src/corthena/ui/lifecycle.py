@@ -9,11 +9,38 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from corthena.ui.assets import AssetLease
-from corthena.ui.data_experiments.actions import RequestPhase7
+from corthena.ui.client.protocol import UIClientProtocol
+from corthena.ui.data_experiments.actions import (
+    IngestionProgressed,
+    RequestFileBrowser,
+    RequestFilePreview,
+    RequestMassivePull,
+    RequestPhase7,
+    RequestReconciliation,
+    RequestSymbolDiscovery,
+    SetDataIngestionView,
+    SetDatasetWizardStep,
+)
 from corthena.ui.data_experiments.models import (
+    AdjustmentPolicy,
+    DataIngestionFixture,
+    DataIngestionView,
+    DatasetWizardStep,
+    FileBrowserRequest,
+    FilePreviewRequest,
+    ImportMode,
+    IngestionPlan,
+    IngestionProgress,
+    IngestionScenario,
+    IngestionStatus,
+    Phase7LoadState,
     Phase7Request,
     Phase7Scenario,
     Phase7Workspace,
+    ReconciliationRequest,
+    SessionPolicy,
+    SourceKind,
+    SymbolDiscoveryRequest,
 )
 from corthena.ui.effects import EffectsRuntime, EnqueueState, RuntimeConfig
 from corthena.ui.golden import encode_rgba_png
@@ -62,10 +89,12 @@ from corthena.ui.research.models import (
 from corthena.ui.shell import project_shell
 from corthena.ui.simulator import DeterministicSimulator, SimulatorConfig
 from corthena.ui.state import (
+    ActivateDockPanel,
     ApplyWorkspaceLayout,
     AppState,
     RequestSnapshot,
     SelectWorkspace,
+    SetSettingsOpen,
     SetUIScale,
     Workspace,
     reduce,
@@ -81,12 +110,13 @@ class LaunchConfig:
     capture_path: Path | None = None
     width: int = 1280
     height: int = 720
-    ui_scale_percent: int = 100
+    ui_scale_percent: int = 125
     visualization_fixture: bool = False
     research_scenario: ResearchScenario | None = None
     research_linked_selection: bool = False
     phase7_workspace: Phase7Workspace | None = None
     phase7_scenario: Phase7Scenario = Phase7Scenario.NORMAL
+    data_ingestion_fixture: DataIngestionFixture | None = None
     phase8_workspace: Phase8Workspace | None = None
     phase8_scenario: Phase8Scenario = Phase8Scenario.JOBS_SUCCESS
     phase9_workspace: Phase9Workspace | None = None
@@ -98,8 +128,13 @@ class LaunchConfig:
             raise ValueError("max_frames must be at least one")
         if self.width < 640 or self.height < 360:
             raise ValueError("launch viewport must be at least 640x360")
-        if self.ui_scale_percent not in (100, 150, 200):
+        if self.ui_scale_percent not in (100, 125, 150, 175, 200):
             raise ValueError("unsupported launch scale")
+        if (
+            self.data_ingestion_fixture is not None
+            and self.phase7_workspace is not Phase7Workspace.DATA
+        ):
+            raise ValueError("Data ingestion fixture requires the Data workspace")
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +154,7 @@ def launch(
     *,
     adapter_factory: Callable[[], NativeUIProtocol] = RaylibUIAdapter,
     runtime_config: RuntimeConfig | None = None,
+    client: UIClientProtocol | None = None,
 ) -> LaunchEvidence:
     """Validate assets, run the bounded frame loop, and clean up deterministically."""
     if config is None:
@@ -213,7 +249,7 @@ def launch(
             )
         )
         effective_runtime_config = RuntimeConfig() if runtime_config is None else runtime_config
-        runtime = EffectsRuntime(simulator, effective_runtime_config)
+        runtime = EffectsRuntime(simulator if client is None else client, effective_runtime_config)
         persistence: PersistenceWorker | None = None
         if config.persistence_directory is not None:
             store = DocumentStore(config.persistence_directory)
@@ -245,6 +281,7 @@ def launch(
             persistence = PersistenceWorker(store)
         max_drained = 0
         linked_selection_pending = config.research_linked_selection
+        data_fixture_pending = config.data_ingestion_fixture is not None
         try:
             adapter.initialize(assets, hidden=config.hidden)
             for effect in startup_effects:
@@ -326,6 +363,133 @@ def launch(
                     )
                     for effect in inference_effects:
                         runtime.enqueue(effect)
+                data = state.data_experiments.data
+                if (
+                    data_fixture_pending
+                    and data.snapshot is not None
+                    and data.state
+                    in {
+                        Phase7LoadState.READY,
+                        Phase7LoadState.DEGRADED,
+                        Phase7LoadState.RECOVERED,
+                    }
+                ):
+                    fixture = config.data_ingestion_fixture
+                    if fixture is None:
+                        raise AssertionError("pending Data fixture lost its identity")
+                    view = {
+                        DataIngestionFixture.API_TOKENS: DataIngestionView.API_TOKENS,
+                        DataIngestionFixture.FILE_BROWSER: DataIngestionView.NEW_DATASET,
+                        DataIngestionFixture.FILE_MAPPING: DataIngestionView.NEW_DATASET,
+                        DataIngestionFixture.MASSIVE_PULL: DataIngestionView.MASSIVE_PULL,
+                        DataIngestionFixture.SCHEDULE_EDITING: DataIngestionView.SCHEDULES,
+                        DataIngestionFixture.ACTIVE_PROGRESS: DataIngestionView.MASSIVE_PULL,
+                        DataIngestionFixture.VALIDATION_ERROR: DataIngestionView.FILE_IMPORT,
+                        DataIngestionFixture.AUTHENTICATION_ERROR: DataIngestionView.MASSIVE_PULL,
+                        DataIngestionFixture.RECOVERED: DataIngestionView.MASSIVE_PULL,
+                    }[fixture]
+                    state, _ = reduce(state, SetDataIngestionView(view))
+                    if fixture is DataIngestionFixture.FILE_MAPPING:
+                        state, _ = reduce(
+                            state,
+                            SetDatasetWizardStep(DatasetWizardStep.MAP_SCHEMA),
+                        )
+                    if fixture is DataIngestionFixture.API_TOKENS:
+                        state, _ = reduce(state, SetSettingsOpen(True))
+                    elif fixture is DataIngestionFixture.SCHEDULE_EDITING:
+                        state, _ = reduce(state, ActivateDockPanel("data-schedules", 0))
+                    elif fixture is DataIngestionFixture.FILE_BROWSER:
+                        state, fixture_effects = reduce(
+                            state,
+                            RequestFileBrowser(
+                                FileBrowserRequest(
+                                    "golden-file-browser",
+                                    data.generation,
+                                    None,
+                                )
+                            ),
+                        )
+                        for effect in fixture_effects:
+                            runtime.enqueue(effect)
+                    elif fixture in {
+                        DataIngestionFixture.FILE_MAPPING,
+                        DataIngestionFixture.VALIDATION_ERROR,
+                    }:
+                        state, fixture_effects = reduce(
+                            state,
+                            RequestFilePreview(
+                                FilePreviewRequest(
+                                    "golden-file-preview",
+                                    data.generation,
+                                    "simulated-bars.csv",
+                                    SourceKind.CSV,
+                                    IngestionScenario.VALIDATION_FAILURE
+                                    if fixture is DataIngestionFixture.VALIDATION_ERROR
+                                    else IngestionScenario.SUCCESS,
+                                )
+                            ),
+                        )
+                        for effect in fixture_effects:
+                            runtime.enqueue(effect)
+                    elif fixture is DataIngestionFixture.MASSIVE_PULL:
+                        state, fixture_effects = reduce(
+                            state,
+                            RequestSymbolDiscovery(
+                                SymbolDiscoveryRequest("golden-symbols", data.generation, "")
+                            ),
+                        )
+                        for effect in fixture_effects:
+                            runtime.enqueue(effect)
+                    elif fixture in {
+                        DataIngestionFixture.ACTIVE_PROGRESS,
+                        DataIngestionFixture.AUTHENTICATION_ERROR,
+                    }:
+                        entry = data.snapshot.catalog[0]
+                        plan = IngestionPlan(
+                            "golden-ingestion-command",
+                            "golden-ingestion",
+                            data.generation,
+                            entry.dataset_id,
+                            entry.revision,
+                            entry.symbols[:2],
+                            "1d",
+                            entry.coverage,
+                            SessionPolicy.REGULAR,
+                            AdjustmentPolicy.PROVIDER_SPLIT_ADJUSTED,
+                            ImportMode.APPEND,
+                            IngestionScenario.AUTHENTICATION_FAILURE
+                            if fixture is DataIngestionFixture.AUTHENTICATION_ERROR
+                            else IngestionScenario.SUCCESS,
+                        )
+                        state, fixture_effects = reduce(state, RequestMassivePull(plan))
+                        if fixture is DataIngestionFixture.ACTIVE_PROGRESS:
+                            state, _ = reduce(
+                                state,
+                                IngestionProgressed(
+                                    IngestionProgress(
+                                        plan.request_id,
+                                        plan.generation,
+                                        IngestionStatus.RUNNING,
+                                        42,
+                                        100,
+                                        "Pulling deterministic Massive pages",
+                                        "massive-golden-request",
+                                    )
+                                ),
+                            )
+                        else:
+                            for effect in fixture_effects:
+                                runtime.enqueue(effect)
+                    elif fixture is DataIngestionFixture.RECOVERED:
+                        state, fixture_effects = reduce(
+                            state,
+                            RequestReconciliation(
+                                ReconciliationRequest("golden-reconcile", data.generation)
+                            ),
+                        )
+                        for effect in fixture_effects:
+                            runtime.enqueue(effect)
+                    data_fixture_pending = False
                 group = state.research.group("link-default-research")
                 if (
                     linked_selection_pending

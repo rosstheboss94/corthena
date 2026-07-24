@@ -57,7 +57,9 @@ def test_projection_is_immutable_repeatable_and_rejects_unsupported_viewports() 
 
 
 def test_canonical_go_phase3_fixture_and_compact_geometry() -> None:
-    view = project_shell(AppState(), width=1280, height=720, dpi_scale=1, fps=60)
+    view = project_shell(
+        AppState(ui_scale_percent=100), width=1280, height=720, dpi_scale=1, fps=60
+    )
     assert (view.dataset_name, view.dataset_id) == ("US equities daily", "dataset-us-equities")
     assert view.symbols == "AAPL, MSFT, NVDA, AMD"
     assert view.date_range == "2020-07-09 to 2026-07-09"
@@ -77,7 +79,7 @@ def test_scale_and_context_projection_follow_closed_state() -> None:
 
 
 def test_context_and_dock_header_hit_regions_are_specific() -> None:
-    view = project_shell(AppState())
+    view = project_shell(AppState(ui_scale_percent=100))
     assert action_at(view, 20, 50) == CycleLinkContext(ContextField.DATASET)
     assert action_at(view, 240, 50) == CycleLinkContext(ContextField.SYMBOLS)
     assert action_at(view, 490, 50) == CycleLinkContext(ContextField.INTERVAL)
@@ -87,7 +89,7 @@ def test_context_and_dock_header_hit_regions_are_specific() -> None:
 
 def test_go_modal_hit_regions_emit_closed_actions() -> None:
     adapter = RaylibUIAdapter()
-    settings = project_shell(AppState(settings_open=True))
+    settings = project_shell(AppState(settings_open=True, ui_scale_percent=100))
     assert adapter.settings_click_actions(settings, 480, 351) == [SetUIScale(125)]
     palette = project_shell(AppState(command_palette_open=True))
     assert adapter.command_click_actions(palette, 350, 260) == [

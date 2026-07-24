@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
+from corthena.ui.datasets.models import DatasetBinding
 from corthena.ui.phase5b import PreparedFrame
 from corthena.ui.table import Dataset
 
@@ -82,11 +83,11 @@ class ResearchQuery:
     correlation_id: str
     group_id: str
     generation: int
-    dataset_id: str
+    dataset_binding: DatasetBinding
     symbols: tuple[str, ...]
     interval: BarInterval
     time_range: TimeRange
-    selected_features: tuple[str, ...]
+    visible_features: tuple[str, ...]
     target: TargetSpec
     resolution: int = 1200
     cursor: str = ""
@@ -96,7 +97,7 @@ class ResearchQuery:
     scenario: ResearchScenario = ResearchScenario.NORMAL
 
     def __post_init__(self) -> None:
-        identities = (self.correlation_id, self.group_id, self.dataset_id)
+        identities = (self.correlation_id, self.group_id, self.dataset_binding.dataset_id)
         if any(not value or value.strip() != value for value in identities):
             raise ValueError("Research correlation, group, and dataset identities are required")
         if self.generation < 1:
@@ -105,12 +106,16 @@ class ResearchQuery:
             raise ValueError("Research requires one to 64 unique symbols")
         if any(not value or value.strip() != value for value in self.symbols):
             raise ValueError("Research symbols must be normalized")
-        if not 1 <= len(self.selected_features) <= 16 or len(set(self.selected_features)) != len(
-            self.selected_features
+        if not 1 <= len(self.visible_features) <= 16 or len(set(self.visible_features)) != len(
+            self.visible_features
         ):
             raise ValueError("Research requires one to 16 unique features")
-        if any(not value or value.strip() != value for value in self.selected_features):
+        if any(not value or value.strip() != value for value in self.visible_features):
             raise ValueError("Research features must be normalized")
+        if self.dataset_binding.feature_columns and not set(self.visible_features) <= set(
+            self.dataset_binding.feature_columns
+        ):
+            raise ValueError("Research may show only engineered columns from its pinned build")
         if not 64 <= self.resolution <= 8192 or not 1 <= self.page_size <= 500:
             raise ValueError("Research resolution or page size is outside its bound")
         if len(self.filter) > 128:
@@ -121,6 +126,15 @@ class ResearchQuery:
     @property
     def request_id(self) -> str:
         return self.correlation_id
+
+    @property
+    def dataset_id(self) -> str:
+        return self.dataset_binding.dataset_id
+
+    @property
+    def selected_features(self) -> tuple[str, ...]:
+        """Visible engineered columns; recipe structure lives only in the binding."""
+        return self.visible_features
 
 
 @dataclass(frozen=True, slots=True)
@@ -323,14 +337,26 @@ def default_research_query(
         correlation_id=f"research-{group_id}-{generation:020d}",
         group_id=group_id,
         generation=generation,
-        dataset_id="dataset-us-equities",
+        dataset_binding=DatasetBinding(
+            "dataset-us-equities",
+            18,
+            ("snapshot-source-us-equities-18",),
+            "sha256:legacy-recipe-us-equities-v18",
+            "sha256:legacy-build-us-equities-v18",
+            (
+                "demo-ret5-v1",
+                "demo-vol20-v1",
+                "demo-volz30-v1",
+            ),
+            ("ret_5", "volatility_20", "volume_z_30"),
+        ),
         symbols=("AAPL", "MSFT", "NVDA", "AMD"),
         interval=BarInterval.DAILY,
         time_range=TimeRange(
             datetime(2020, 7, 9, tzinfo=UTC),
             datetime(2026, 7, 9, tzinfo=UTC),
         ),
-        selected_features=("ret_5",),
+        visible_features=("ret_5",),
         target=TargetSpec(),
         scenario=scenario,
     )

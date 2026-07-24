@@ -8,7 +8,7 @@ description: Build Corthena Phase 4 docking, reusable controls, preferences, res
 ## Ground the implementation
 
 1. Read `AGENTS.md` and every required document in
-   `specs/routing/phase-4.md` before editing.
+   `specs/general/ui/persistence-and-responsive.md` before editing.
 2. Treat the living specifications, legacy Go implementation, and manifest-owned
    `phase4_dockable_data.png` as canonical. Update the owning specification first
    when behavior or a public contract changes.

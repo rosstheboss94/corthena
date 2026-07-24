@@ -176,6 +176,7 @@ def test_data_and_experiments_layouts_project_required_panels_responsively() -> 
         "data-import-queue",
         "data-dataset",
         "data-import-logs",
+        "data-schedules",
     }
     state, _ = reduce(state, SelectWorkspace(Workspace.EXPERIMENTS))
     experiments = project_shell(state, width=1280, height=720)

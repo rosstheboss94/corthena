@@ -39,9 +39,9 @@ func skillCount(path string) (description, body int, err error) {
 
 func main() {
 	routes := map[string][]string{
-		"phase-7": {"AGENTS.md", "specs/roadmap.md", "specs/frontend/workspace-data.md", "specs/frontend/workspace-experiments.md", "specs/data-and-features.md", "specs/quality-common.md", "specs/quality-concurrency.md"},
-		"phase-8": {"AGENTS.md", "specs/roadmap.md", "specs/frontend/workspace-jobs.md", "specs/frontend/workspace-results.md", "specs/training-runtime.md", "specs/evaluation.md", "specs/quality-common.md", "specs/quality-concurrency.md"},
-		"phase-9": {"AGENTS.md", "specs/roadmap.md", "specs/frontend/workspace-models.md", "specs/frontend/workspace-inference.md", "specs/model-estimators.md", "specs/model-artifacts.md", "specs/inference.md", "specs/quality-common.md", "specs/quality-concurrency.md"},
+		"data": {"AGENTS.md", "specs/general/roadmap.md", "specs/pages/data/README.md", "specs/pages/data/workspace.md", "specs/pages/data/ingestion.md", "specs/pages/data/datasets.md", "specs/pages/data/api.md", "specs/general/quality/common.md", "specs/general/quality/concurrency.md"},
+		"jobs-results": {"AGENTS.md", "specs/general/roadmap.md", "specs/pages/jobs/README.md", "specs/pages/jobs/workspace.md", "specs/pages/jobs/runtime.md", "specs/pages/results/README.md", "specs/pages/results/workspace.md", "specs/pages/results/evaluation-and-backtesting.md", "specs/general/quality/common.md", "specs/general/quality/concurrency.md"},
+		"models-inference": {"AGENTS.md", "specs/general/roadmap.md", "specs/pages/models/README.md", "specs/pages/models/workspace.md", "specs/pages/models/estimators.md", "specs/pages/models/artifacts-and-registry.md", "specs/pages/inference/README.md", "specs/pages/inference/workspace.md", "specs/pages/inference/scoring-and-export.md", "specs/general/quality/common.md", "specs/general/quality/concurrency.md"},
 	}
 	for _, path := range []string{"AGENTS.md"} {
 		words, err := count(path)

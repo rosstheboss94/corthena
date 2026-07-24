@@ -320,10 +320,13 @@ def project_shell(
             ComponentView("Catalog", "2 demo datasets", (76, 195, 138, 255)),
             ComponentView("Scheduler", "simulated queue", (216, 180, 90, 255)),
         ),
-        datasets=phase7_datasets
-        or (
-            DatasetRowView("US equities daily", "ready", "958328", "16", True),
-            DatasetRowView("Index watchlist hourly", "validation", "219733", "7", False),
+        datasets=(
+            phase7_datasets
+            if phase7 is not None and phase7.snapshot is not None
+            else (
+                DatasetRowView("US equities daily", "ready", "958328", "16", True),
+                DatasetRowView("Index watchlist hourly", "validation", "219733", "7", False),
+            )
         ),
         content_bounds=content_bounds,
         dock_stacks=dock_stacks,

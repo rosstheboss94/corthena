@@ -43,7 +43,7 @@ security scans, and compatibility with the screenshot and behavioral baseline.
 
 ## Affected specifications
 
-- [Technology stack](../technology-stack.md)
-- [System architecture](../system-architecture.md)
-- [Quality](../quality.md)
-- [UI foundation](../ui/foundation.md)
+- [Technology stack](../general/technology-stack.md)
+- [System architecture](../general/system-architecture.md)
+- [Quality](../general/quality/README.md)
+- [UI foundation](../general/ui/README.md)

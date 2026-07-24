@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import pairwise
 from typing import TYPE_CHECKING
 
@@ -27,26 +27,67 @@ from corthena.ui.controls import (
     route,
 )
 from corthena.ui.data_experiments.actions import (
+    CloseFileBrowser,
+    ConfirmIngestion,
     EditExperimentDraft,
+    RequestCredentialDelete,
+    RequestCredentialSave,
+    RequestCredentialTest,
     RequestDataImport,
     RequestDraftEvaluation,
     RequestDraftSave,
+    RequestFileBrowser,
+    RequestFileIngestion,
+    RequestFilePreview,
+    RequestIngestionCancellation,
+    RequestMassivePull,
     RequestPhase7,
+    RequestReconciliation,
+    RequestScheduleCommand,
     RequestSubmission,
+    RequestSymbolDiscovery,
+    ScrollFileBrowser,
+    SelectDatasetSource,
+    SelectFileBrowserEntry,
+    SetDataIngestionView,
+    SetDatasetWizardStep,
+    SetIngestionScenario,
     SetPhase7Scenario,
+    SetSelectedSymbols,
+    UpdateFileMapping,
+    UpdateIngestionForm,
 )
 from corthena.ui.data_experiments.models import (
     AdjustmentPolicy,
+    ColumnMapping,
+    CredentialRequest,
+    CredentialSecretRequest,
+    DataIngestionView,
+    DataSchedule,
+    DatasetWizardStep,
     DraftSaveRequest,
+    FileBrowserEntry,
+    FileBrowserEntryKind,
+    FileBrowserRequest,
+    FilePreviewRequest,
     ImportMode,
     ImportRequest,
+    IngestionPlan,
+    IngestionScenario,
+    IngestionStatus,
     Phase7LoadState,
     Phase7Request,
     Phase7Scenario,
     Phase7Workspace,
     Phase7WorkspaceState,
+    ReconciliationRequest,
+    ScheduleCadence,
+    ScheduleCommand,
+    ScheduleCommandKind,
+    SessionPolicy,
     SourceKind,
     SubmissionRequest,
+    SymbolDiscoveryRequest,
 )
 from corthena.ui.docking import DockPosition
 from corthena.ui.docking import Rect as ControlRect
@@ -104,6 +145,7 @@ from corthena.ui.research.models import (
     select_range,
     zoom_range,
 )
+from corthena.ui.secret_buffer import SecretEntryBuffer
 from corthena.ui.shell import (
     DockDropTargetView,
     ShellRegion,
@@ -117,10 +159,23 @@ from corthena.ui.shell import (
 from corthena.ui.state import (
     DockPanel,
     ResizeDockSplit,
+    SelectWorkspace,
     SetCommandPalette,
     SetSettingsOpen,
     SetUIScale,
     UIAction,
+    Workspace,
+)
+
+_SCHEMA_MAPPING_ROLES = (
+    "timestamp",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "ignore",
 )
 
 
@@ -138,6 +193,7 @@ class RaylibUIAdapter:
         self._inter_font: Font | None = None
         self._mono_font: Font | None = None
         self._atlas: Texture | None = None
+        self._secret_entry = SecretEntryBuffer()
         self._command_index = 0
         self._visualization_controls = ControlState()
         self._visualization_drag_start: VisualizationPoint | None = None
@@ -146,6 +202,8 @@ class RaylibUIAdapter:
         self._split_drag: str | None = None
         self._dock_targets: tuple[DockDropTargetView, ...] = ()
         self._research_drag: tuple[str, float, TimeRange, bool] | None = None
+        self._last_file_browser_click: tuple[str, float] | None = None
+        self._open_schema_mapping_column: str | None = None
 
     @property
     def owner_thread_id(self) -> int:
@@ -624,6 +682,8 @@ class RaylibUIAdapter:
             actions.append(SetCommandPalette(True))
         if not view.critical_error and control_down and rl.is_key_pressed(rl.KEY_COMMA):
             actions.append(SetSettingsOpen(True))
+            if view.phase7_workspace is not None:
+                actions.append(SetDataIngestionView(DataIngestionView.API_TOKENS))
         if control_down and (rl.is_key_pressed(rl.KEY_EQUAL) or rl.is_key_pressed(rl.KEY_KP_ADD)):
             actions.append(SetUIScale(min(200, view.ui_scale_percent + 25)))
         if control_down and (
@@ -648,6 +708,7 @@ class RaylibUIAdapter:
                 actions.append(SetCommandPalette(False))
             if view.settings_open:
                 actions.append(SetSettingsOpen(False))
+                self._secret_entry.clear()
         mouse_x = float(rl.get_mouse_x())
         mouse_y = float(rl.get_mouse_y())
         actions.extend(self._research_actions(view, rl, mouse_x, mouse_y))
@@ -908,6 +969,289 @@ class RaylibUIAdapter:
                     )
                 ),
             )
+        if self._open_schema_mapping_column is not None and rl.is_key_pressed(rl.KEY_ESCAPE):
+            self._open_schema_mapping_column = None
+            return ()
+        if rl.is_mouse_button_pressed(rl.MOUSE_BUTTON_LEFT):
+            click_actions = self.phase7_click_actions(
+                view,
+                float(rl.get_mouse_x()),
+                float(rl.get_mouse_y()),
+                event_time=float(rl.get_time()),
+            )
+            if click_actions:
+                return tuple(click_actions)
+        if current.ingestion_view is DataIngestionView.FILE_BROWSER:
+            wheel = float(rl.get_mouse_wheel_move())
+            if wheel:
+                row_delta = -3 if wheel > 0 else 3
+                return (ScrollFileBrowser(row_delta),)
+            listing = current.file_browser
+            if (
+                listing is not None
+                and listing.next_cursor is not None
+                and current.active_ingestion_id is None
+                and not current.file_browser_loading_page
+                and current.error is None
+                and current.file_browser_scroll_row + 12
+                >= max(0, len(current.file_browser_entries) - 4)
+            ):
+                return (
+                    RequestFileBrowser(
+                        self._file_browser_request(
+                            current,
+                            location=listing.location,
+                            cursor=listing.next_cursor,
+                        )
+                    ),
+                )
+        if current.ingestion_status in {
+            IngestionStatus.AUTHENTICATION_FAILED,
+            IngestionStatus.ENTITLEMENT_FAILED,
+            IngestionStatus.FAILED,
+        }:
+            self._secret_entry.clear()
+        views = (
+            DataIngestionView.CATALOG,
+            DataIngestionView.NEW_DATASET,
+            DataIngestionView.FILE_IMPORT,
+            DataIngestionView.MASSIVE_PULL,
+            DataIngestionView.SCHEDULES,
+            DataIngestionView.API_TOKENS,
+        )
+        function_keys = (rl.KEY_F1, rl.KEY_F2, rl.KEY_F3, rl.KEY_F4, rl.KEY_F5, rl.KEY_F6)
+        for key, ingestion_view in zip(function_keys, views, strict=True):
+            if rl.is_key_pressed(key):
+                if ingestion_view is not DataIngestionView.API_TOKENS:
+                    self._secret_entry.clear()
+                return (SetDataIngestionView(ingestion_view),)
+        ingestion_scenarios = tuple(IngestionScenario)
+        if rl.is_key_pressed(rl.KEY_G):
+            scenario = ingestion_scenarios[
+                (ingestion_scenarios.index(current.ingestion_scenario) + 1)
+                % len(ingestion_scenarios)
+            ]
+            return (SetIngestionScenario(scenario),)
+        if current.active_ingestion_id is not None and rl.is_key_pressed(rl.KEY_X):
+            return (RequestIngestionCancellation(current.active_ingestion_id),)
+        if control_down and rl.is_key_pressed(rl.KEY_R):
+            return (
+                RequestReconciliation(
+                    ReconciliationRequest(
+                        f"reconcile-{current.generation:020d}", current.generation
+                    )
+                ),
+            )
+        if view.settings_open or current.ingestion_view is DataIngestionView.API_TOKENS:
+            character = int(rl.get_char_pressed())
+            while character:
+                if 32 <= character <= 126:
+                    self._secret_entry.append(chr(character))
+                character = int(rl.get_char_pressed())
+            if rl.is_key_pressed(rl.KEY_BACKSPACE):
+                self._secret_entry.backspace()
+            request = CredentialRequest(
+                f"credential-{current.generation:020d}",
+                f"credential-command-{current.generation:020d}",
+                current.generation,
+            )
+            if control_down and rl.is_key_pressed(rl.KEY_ENTER) and self._secret_entry.length:
+                return (
+                    RequestCredentialSave(
+                        CredentialSecretRequest(request, self._secret_entry.take())
+                    ),
+                )
+            if control_down and rl.is_key_pressed(rl.KEY_T) and self._secret_entry.length:
+                return (
+                    RequestCredentialTest(
+                        CredentialSecretRequest(request, self._secret_entry.take())
+                    ),
+                )
+            if rl.is_key_pressed(rl.KEY_DELETE):
+                self._secret_entry.clear()
+                return (RequestCredentialDelete(request),)
+        if (
+            current.snapshot is not None
+            and current.ingestion_view
+            in {
+                DataIngestionView.FILE_IMPORT,
+                DataIngestionView.NEW_DATASET,
+            }
+            and rl.is_key_pressed(rl.KEY_P)
+        ):
+            return (RequestFileBrowser(self._file_browser_request(current, location=None)),)
+        if current.ingestion_view is DataIngestionView.FILE_BROWSER and rl.is_key_pressed(
+            rl.KEY_ESCAPE
+        ):
+            return (CloseFileBrowser(),)
+        if current.file_preview is not None and rl.is_key_pressed(rl.KEY_M):
+            mapping = next(
+                (item for item in current.file_preview.columns if item.source_column == "ticker"),
+                current.file_preview.columns[0],
+            )
+            return (
+                UpdateFileMapping(
+                    ColumnMapping(
+                        mapping.source_column,
+                        "ignore" if mapping.role == "symbol" else "symbol",
+                        mapping.source_type,
+                        False,
+                    )
+                ),
+            )
+        intervals = ("1m", "5m", "15m", "1h", "1d")
+        modes = (ImportMode.CREATE, ImportMode.APPEND, ImportMode.REPLACE_RANGE)
+        if rl.is_key_pressed(rl.KEY_B):
+            return (
+                UpdateIngestionForm(
+                    intervals[(intervals.index(current.form_interval) + 1) % len(intervals)],
+                    current.form_session,
+                    current.form_adjustment,
+                    current.form_mode,
+                    current.form_source_timezone,
+                ),
+            )
+        if rl.is_key_pressed(rl.KEY_H):
+            return (
+                UpdateIngestionForm(
+                    current.form_interval,
+                    SessionPolicy.ALL
+                    if current.form_session is SessionPolicy.REGULAR
+                    else SessionPolicy.REGULAR,
+                    current.form_adjustment,
+                    current.form_mode,
+                    current.form_source_timezone,
+                ),
+            )
+        if rl.is_key_pressed(rl.KEY_J):
+            return (
+                UpdateIngestionForm(
+                    current.form_interval,
+                    current.form_session,
+                    AdjustmentPolicy.PROVIDER_SPLIT_ADJUSTED
+                    if current.form_adjustment is AdjustmentPolicy.RAW
+                    else AdjustmentPolicy.RAW,
+                    current.form_mode,
+                    current.form_source_timezone,
+                ),
+            )
+        if rl.is_key_pressed(rl.KEY_N):
+            return (
+                UpdateIngestionForm(
+                    current.form_interval,
+                    current.form_session,
+                    current.form_adjustment,
+                    modes[(modes.index(current.form_mode) + 1) % len(modes)],
+                    current.form_source_timezone,
+                ),
+            )
+        if current.ingestion_view in {
+            DataIngestionView.FILE_IMPORT,
+            DataIngestionView.NEW_DATASET,
+        } and rl.is_key_pressed(rl.KEY_T):
+            return (
+                UpdateIngestionForm(
+                    current.form_interval,
+                    current.form_session,
+                    current.form_adjustment,
+                    current.form_mode,
+                    "America/New_York" if current.form_source_timezone == "UTC" else "UTC",
+                ),
+            )
+        if current.ingestion_view is DataIngestionView.MASSIVE_PULL and rl.is_key_pressed(rl.KEY_D):
+            return (
+                RequestSymbolDiscovery(
+                    SymbolDiscoveryRequest(
+                        f"symbols-{current.generation:020d}",
+                        current.generation,
+                        "",
+                        scenario=current.ingestion_scenario,
+                    )
+                ),
+            )
+        if (
+            current.ingestion_view is DataIngestionView.MASSIVE_PULL
+            and current.discovered_symbols
+            and rl.is_key_pressed(rl.KEY_A)
+        ):
+            return (
+                SetSelectedSymbols(tuple(item.symbol for item in current.discovered_symbols[:4])),
+            )
+        if current.snapshot is not None and rl.is_key_pressed(rl.KEY_ENTER):
+            return self._ingestion_submit_actions(current)
+        if current.ingestion_view is DataIngestionView.SCHEDULES and current.snapshot is not None:
+            entry = current.snapshot.catalog[0]
+            if rl.is_key_pressed(rl.KEY_C):
+                schedule = DataSchedule(
+                    "schedule-simulated-hourly",
+                    1,
+                    "Simulated hourly refresh",
+                    entry.dataset_id,
+                    entry.symbols[:2],
+                    "1h",
+                    SessionPolicy.REGULAR,
+                    AdjustmentPolicy.PROVIDER_SPLIT_ADJUSTED,
+                    ScheduleCadence.HOURLY,
+                    True,
+                    next_run_at=current.snapshot.replay_clock + timedelta(hours=1),
+                )
+                return (
+                    RequestScheduleCommand(
+                        ScheduleCommand(
+                            f"schedule-create-{current.generation:020d}",
+                            f"schedule-create-command-{current.generation:020d}",
+                            current.generation,
+                            ScheduleCommandKind.CREATE,
+                            schedule,
+                            0,
+                        )
+                    ),
+                )
+            selected = next(
+                (
+                    item
+                    for item in current.schedules
+                    if item.schedule_id == current.selected_schedule_id
+                ),
+                current.schedules[0] if current.schedules else None,
+            )
+            if selected is not None:
+                kind = (
+                    ScheduleCommandKind.RUN_NOW
+                    if rl.is_key_pressed(rl.KEY_R)
+                    else ScheduleCommandKind.UPDATE
+                    if rl.is_key_pressed(rl.KEY_U)
+                    else ScheduleCommandKind.SET_ENABLED
+                    if rl.is_key_pressed(rl.KEY_E)
+                    else ScheduleCommandKind.DELETE
+                    if rl.is_key_pressed(rl.KEY_DELETE)
+                    else None
+                )
+                if kind is not None:
+                    schedule = (
+                        replace(selected, enabled=not selected.enabled)
+                        if kind is ScheduleCommandKind.SET_ENABLED
+                        else replace(
+                            selected,
+                            cadence=ScheduleCadence.HOURLY
+                            if selected.cadence is ScheduleCadence.DAILY
+                            else ScheduleCadence.DAILY,
+                        )
+                        if kind is ScheduleCommandKind.UPDATE
+                        else selected
+                    )
+                    return (
+                        RequestScheduleCommand(
+                            ScheduleCommand(
+                                f"schedule-{kind.value}-{current.generation:020d}",
+                                f"schedule-{kind.value}-command-{current.generation:020d}",
+                                current.generation,
+                                kind,
+                                schedule,
+                                selected.revision,
+                            )
+                        ),
+                    )
         scenarios = (
             Phase7Scenario.NORMAL,
             Phase7Scenario.LOADING,
@@ -1041,14 +1385,913 @@ class RaylibUIAdapter:
             and bounds.y <= y <= bounds.y + bounds.height
         )
 
+    @staticmethod
+    def _phase7_content_bounds(view: ShellView) -> ShellRect | None:
+        stack = next(
+            (item for item in view.dock_stacks if item.active_panel_id.startswith("data-")),
+            None,
+        )
+        if stack is None:
+            return None
+        scale = view.scale
+        return ShellRect(
+            stack.body_bounds.x + 14 * scale,
+            stack.body_bounds.y + 58 * scale,
+            stack.body_bounds.width - 28 * scale,
+            stack.body_bounds.height - 72 * scale,
+        )
+
+    @staticmethod
+    def _phase7_button_layout(
+        items: tuple[tuple[str, DataIngestionView], ...],
+        x: float,
+        y: float,
+        width: float,
+        scale: float,
+    ) -> tuple[tuple[str, DataIngestionView, ShellRect], ...]:
+        layout: list[tuple[str, DataIngestionView, ShellRect]] = []
+        cursor_x = x
+        cursor_y = y
+        height = 28 * scale
+        gap = 6 * scale
+        for label, destination in items:
+            item_width = (len(label) * 6 + 22) * scale
+            if cursor_x > x and cursor_x + item_width > x + width:
+                cursor_x = x
+                cursor_y += height + gap
+            layout.append((label, destination, ShellRect(cursor_x, cursor_y, item_width, height)))
+            cursor_x += item_width + gap
+        return tuple(layout)
+
+    @classmethod
+    def _ingestion_navigation_layout(
+        cls, x: float, y: float, width: float, scale: float
+    ) -> tuple[tuple[str, DataIngestionView, ShellRect], ...]:
+        return ()
+
+    @classmethod
+    def _catalog_action_layout(
+        cls, x: float, y: float, width: float, scale: float
+    ) -> tuple[tuple[str, DataIngestionView, ShellRect], ...]:
+        return cls._phase7_button_layout(
+            (("+ New Dataset", DataIngestionView.NEW_DATASET),),
+            x,
+            y,
+            width,
+            scale,
+        )
+
+    @classmethod
+    def _dataset_wizard_step_layout(
+        cls, x: float, y: float, width: float, scale: float
+    ) -> tuple[tuple[DatasetWizardStep, str, ShellRect], ...]:
+        labels = (
+            (DatasetWizardStep.SELECT_SOURCE, "1 Source"),
+            (DatasetWizardStep.MAP_SCHEMA, "2 Schema"),
+            (DatasetWizardStep.SOURCE_SELECTION, "3 Selection"),
+            (DatasetWizardStep.FEATURES, "4 Features"),
+            (DatasetWizardStep.REVIEW, "5 Review"),
+            (DatasetWizardStep.BUILD, "6 Build"),
+        )
+        gap = 4 * scale
+        button_width = max(56 * scale, (width - gap * (len(labels) - 1)) / len(labels))
+        return tuple(
+            (
+                step,
+                label,
+                ShellRect(x + index * (button_width + gap), y, button_width, 22 * scale),
+            )
+            for index, (step, label) in enumerate(labels)
+        )
+
+    @staticmethod
+    def _file_browser_request(
+        current: Phase7WorkspaceState,
+        *,
+        location: str | None,
+        cursor: str | None = None,
+    ) -> FileBrowserRequest:
+        revision = (
+            current.file_browser_navigation_revision
+            if cursor is not None
+            else current.file_browser_navigation_revision + 1
+        )
+        cursor_identity = "root" if cursor is None else cursor
+        browser_origin = (
+            current.file_browser_origin
+            if current.ingestion_view is DataIngestionView.FILE_BROWSER
+            else current.ingestion_view
+        )
+        return FileBrowserRequest(
+            (f"file-browser-{current.generation:020d}-{revision:020d}-{cursor_identity}"),
+            current.generation,
+            None if browser_origin is DataIngestionView.NEW_DATASET else current.form_source_kind,
+            current.ingestion_scenario,
+            location,
+            revision,
+            cursor,
+        )
+
+    @staticmethod
+    def _flow_action_layout(
+        current: Phase7WorkspaceState,
+        x: float,
+        y: float,
+        width: float,
+        scale: float,
+    ) -> tuple[tuple[str, str, ShellRect], ...]:
+        if current.ingestion_view is DataIngestionView.FILE_BROWSER:
+            items = (("select_file", "Select"), ("close_browser", "Cancel"))
+        elif current.ingestion_view is DataIngestionView.NEW_DATASET:
+            items = (
+                (
+                    "choose_file"
+                    if current.dataset_wizard_step is DatasetWizardStep.SELECT_SOURCE
+                    else "wizard_back",
+                    "Browse Files..."
+                    if current.dataset_wizard_step is DatasetWizardStep.SELECT_SOURCE
+                    else "Back",
+                ),
+                (
+                    "open_research"
+                    if current.dataset_wizard_step is DatasetWizardStep.BUILD
+                    and current.last_successful_dataset_build is not None
+                    and current.last_successful_dataset_build.binding is not None
+                    else "wizard_next",
+                    "Open in Research"
+                    if current.dataset_wizard_step is DatasetWizardStep.BUILD
+                    and current.last_successful_dataset_build is not None
+                    and current.last_successful_dataset_build.binding is not None
+                    else "Next",
+                ),
+                ("catalog", "Back to Catalog"),
+            )
+        elif current.ingestion_view is DataIngestionView.FILE_IMPORT:
+            items = (
+                (
+                    "choose_file",
+                    f"Browse {current.form_source_kind.value.upper()} Files...",
+                ),
+                (
+                    "submit",
+                    "Confirm Import"
+                    if current.ingestion_status is IngestionStatus.CONFIRMING
+                    else "Review Import",
+                ),
+                ("catalog", "Back to Catalog"),
+            )
+        elif current.ingestion_view is DataIngestionView.MASSIVE_PULL:
+            items = (
+                ("discover", "Search Stocks"),
+                ("select", "Select Visible"),
+                (
+                    "submit",
+                    "Confirm Pull"
+                    if current.ingestion_status is IngestionStatus.CONFIRMING
+                    else "Review Pull",
+                ),
+                (
+                    "cancel" if current.active_ingestion_id is not None else "catalog",
+                    "Cancel Pull" if current.active_ingestion_id is not None else "Back to Catalog",
+                ),
+            )
+        elif current.ingestion_view is DataIngestionView.SCHEDULES:
+            items = (
+                ("schedule_create", "+ New Schedule"),
+                ("schedule_update", "Edit Cadence"),
+                ("schedule_enabled", "Enable / Disable"),
+                ("schedule_run", "Run Now"),
+                ("schedule_delete", "Delete"),
+            )
+        else:
+            items = (
+                ("credential_save", "Save / Replace"),
+                ("credential_test", "Test Token"),
+                ("credential_delete", "Delete Token"),
+            )
+        layout: list[tuple[str, str, ShellRect]] = []
+        cursor_x = x
+        cursor_y = y
+        height = 30 * scale
+        gap = 6 * scale
+        for action_id, label in items:
+            item_width = (len(label) * 6 + 24) * scale
+            if cursor_x > x and cursor_x + item_width > x + width:
+                cursor_x = x
+                cursor_y += height + gap
+            layout.append((action_id, label, ShellRect(cursor_x, cursor_y, item_width, height)))
+            cursor_x += item_width + gap
+        return tuple(layout)
+
+    @staticmethod
+    def _file_browser_entry_layout(
+        current: Phase7WorkspaceState,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> tuple[tuple[FileBrowserEntry, ShellRect], ...]:
+        if current.file_browser is None and not current.file_browser_entries:
+            return ()
+        row_height = 30 * scale
+        row_gap = 4 * scale
+        maximum_rows = max(0, int((height + row_gap) // (row_height + row_gap)))
+        start = min(current.file_browser_scroll_row, max(0, len(current.file_browser_entries) - 1))
+        return tuple(
+            (
+                entry,
+                ShellRect(x, y + visible_index * (row_height + row_gap), width, row_height),
+            )
+            for visible_index, entry in enumerate(
+                current.file_browser_entries[start : start + maximum_rows]
+            )
+        )
+
+    @classmethod
+    def _ingestion_flow_geometry(
+        cls, current: Phase7WorkspaceState, bounds: ShellRect, scale: float
+    ) -> tuple[
+        tuple[tuple[str, DataIngestionView, ShellRect], ...],
+        tuple[tuple[str, str, ShellRect], ...],
+        float,
+    ]:
+        navigation = cls._ingestion_navigation_layout(bounds.x, bounds.y, bounds.width, scale)
+        dense = bounds.height / scale < 260
+        navigation_bottom = bounds.y
+        actions = cls._flow_action_layout(
+            current,
+            bounds.x,
+            navigation_bottom + (0 if dense else 48) * scale,
+            bounds.width,
+            scale,
+        )
+        content_y = (
+            max(item[2].y + item[2].height for item in actions) + (8 if dense else 12) * scale
+        )
+        return navigation, actions, content_y
+
+    @staticmethod
+    def _new_dataset_option_layout(
+        current: Phase7WorkspaceState,
+        x: float,
+        y: float,
+        scale: float,
+        *,
+        dense: bool,
+    ) -> tuple[tuple[str, str, bool, ShellRect], ...]:
+        rows = (
+            tuple(
+                (f"interval_{value}", value, current.form_interval == value)
+                for value in ("1m", "5m", "15m", "1h", "1d")
+            ),
+            (
+                ("session_regular", "Regular", current.form_session is SessionPolicy.REGULAR),
+                ("session_all", "All", current.form_session is SessionPolicy.ALL),
+            ),
+            (
+                ("adjustment_raw", "Raw", current.form_adjustment is AdjustmentPolicy.RAW),
+                (
+                    "adjustment_split",
+                    "Split Adjusted",
+                    current.form_adjustment is AdjustmentPolicy.PROVIDER_SPLIT_ADJUSTED,
+                ),
+            ),
+            (
+                ("timezone_utc", "UTC", current.form_source_timezone == "UTC"),
+                (
+                    "timezone_new_york",
+                    "New York",
+                    current.form_source_timezone == "America/New_York",
+                ),
+            ),
+        )
+        layout: list[tuple[str, str, bool, ShellRect]] = []
+        label_width = (80 if dense else 112) * scale
+        row_step = (22 if dense else 34) * scale
+        item_height = (20 if dense else 28) * scale
+        for row_index, row in enumerate(rows):
+            cursor_x = x + label_width
+            row_y = y + row_index * row_step
+            for action_id, label, selected in row:
+                item_width = (len(label) * 6 + 24) * scale
+                layout.append(
+                    (
+                        action_id,
+                        label,
+                        selected,
+                        ShellRect(cursor_x, row_y, item_width, item_height),
+                    )
+                )
+                cursor_x += item_width + 6 * scale
+        return tuple(layout)
+
+    @staticmethod
+    def _dataset_source_layout(
+        current: Phase7WorkspaceState,
+        x: float,
+        y: float,
+        width: float,
+        scale: float,
+    ) -> tuple[tuple[str, ShellRect], ...]:
+        return tuple(
+            (
+                source.source_id,
+                ShellRect(x, y + index * 30 * scale, width, 26 * scale),
+            )
+            for index, source in enumerate(current.sources[:5])
+        )
+
+    @staticmethod
+    def _dataset_schema_mapping_layout(
+        current: Phase7WorkspaceState,
+        x: float,
+        y: float,
+        width: float,
+        scale: float,
+        *,
+        dense: bool,
+    ) -> tuple[tuple[ColumnMapping, ShellRect, ShellRect], ...]:
+        preview = current.file_preview
+        if preview is None:
+            return ()
+        mappings = preview.columns[:9]
+        if dense:
+            column_count = min(4, len(mappings))
+            column_gap = 4 * scale
+            column_width = (width - column_gap * (column_count - 1)) / column_count
+            rows_per_column = (len(mappings) + column_count - 1) // column_count
+            return tuple(
+                (
+                    mapping,
+                    ShellRect(
+                        x + (index // rows_per_column) * (column_width + column_gap),
+                        y + (index % rows_per_column) * 22 * scale,
+                        column_width,
+                        20 * scale,
+                    ),
+                    ShellRect(
+                        x + (index // rows_per_column) * (column_width + column_gap),
+                        y + (index % rows_per_column) * 22 * scale,
+                        column_width,
+                        20 * scale,
+                    ),
+                )
+                for index, mapping in enumerate(mappings)
+            )
+        row_height = 28 * scale
+        role_width = min(150 * scale, width * 0.22)
+        return tuple(
+            (
+                mapping,
+                ShellRect(x, y + index * (row_height + 4 * scale), width, row_height),
+                ShellRect(
+                    x + width * 0.55,
+                    y + index * (row_height + 4 * scale),
+                    role_width,
+                    row_height,
+                ),
+            )
+            for index, mapping in enumerate(mappings)
+        )
+
+    @staticmethod
+    def _dataset_schema_dropdown_layout(
+        role_button: ShellRect,
+        x: float,
+        width: float,
+        panel_bottom: float,
+        scale: float,
+        *,
+        dense: bool,
+    ) -> tuple[tuple[str, ShellRect], ...]:
+        if dense:
+            column_count = 4
+            gap = 4 * scale
+            item_width = (width - gap * (column_count - 1)) / column_count
+            item_height = 20 * scale
+            row_count = (len(_SCHEMA_MAPPING_ROLES) + column_count - 1) // column_count
+            menu_height = row_count * item_height + (row_count - 1) * gap
+            menu_y = min(role_button.y + role_button.height + gap, panel_bottom - menu_height)
+            return tuple(
+                (
+                    role,
+                    ShellRect(
+                        x + (index % column_count) * (item_width + gap),
+                        menu_y + (index // column_count) * (item_height + gap),
+                        item_width,
+                        item_height,
+                    ),
+                )
+                for index, role in enumerate(_SCHEMA_MAPPING_ROLES)
+            )
+        gap = 4 * scale
+        item_height = 24 * scale
+        menu_height = len(_SCHEMA_MAPPING_ROLES) * item_height
+        menu_y = role_button.y + role_button.height + gap
+        if menu_y + menu_height > panel_bottom:
+            menu_y = max(role_button.y - gap - menu_height, 0)
+        return tuple(
+            (
+                role,
+                ShellRect(
+                    role_button.x,
+                    menu_y + index * item_height,
+                    role_button.width,
+                    item_height,
+                ),
+            )
+            for index, role in enumerate(_SCHEMA_MAPPING_ROLES)
+        )
+
+    @staticmethod
+    def _schema_mapping_actions(
+        current: Phase7WorkspaceState,
+        mapping: ColumnMapping,
+        next_role: str,
+    ) -> list[UIAction]:
+        actions: list[UIAction] = []
+        if next_role != "ignore" and current.file_preview is not None:
+            occupied = next(
+                (
+                    item
+                    for item in current.file_preview.columns
+                    if item.source_column != mapping.source_column and item.role == next_role
+                ),
+                None,
+            )
+            if occupied is not None:
+                actions.append(
+                    UpdateFileMapping(
+                        ColumnMapping(
+                            occupied.source_column,
+                            "ignore",
+                            occupied.source_type,
+                            False,
+                        )
+                    )
+                )
+        if mapping.role != next_role:
+            actions.append(
+                UpdateFileMapping(
+                    ColumnMapping(
+                        mapping.source_column,
+                        next_role,
+                        mapping.source_type,
+                        False,
+                    )
+                )
+            )
+        return actions
+
+    def phase7_click_actions(
+        self,
+        view: ShellView,
+        x: float,
+        y: float,
+        *,
+        event_time: float | None = None,
+    ) -> list[UIAction]:
+        """Map a visible Data-ingestion control to typed actions."""
+        current = view.phase7_workspace
+        bounds = self._phase7_content_bounds(view)
+        if current is None or bounds is None or current.state is Phase7LoadState.IDLE:
+            return []
+        if (
+            current.ingestion_view is not DataIngestionView.NEW_DATASET
+            or current.dataset_wizard_step is not DatasetWizardStep.MAP_SCHEMA
+        ):
+            self._open_schema_mapping_column = None
+        active_panel_id = next(
+            (
+                stack.active_panel_id
+                for stack in view.dock_stacks
+                if stack.active_panel_id.startswith("data-")
+            ),
+            "",
+        )
+        if active_panel_id == "data-schedules":
+            schedule_state = replace(current, ingestion_view=DataIngestionView.SCHEDULES)
+            buttons = self._flow_action_layout(
+                schedule_state,
+                bounds.x,
+                bounds.y + 28 * view.scale,
+                bounds.width,
+                view.scale,
+            )
+            for action_id, _, button in buttons:
+                if self._inside(button, x, y):
+                    action = self._schedule_command_action(schedule_state, action_id)
+                    return [] if action is None else [action]
+            return []
+        if current.ingestion_view is DataIngestionView.CATALOG:
+            for _, destination, button in self._catalog_action_layout(
+                bounds.x, bounds.y + 26 * view.scale, bounds.width, view.scale
+            ):
+                if self._inside(button, x, y):
+                    if destination is not DataIngestionView.API_TOKENS:
+                        self._secret_entry.clear()
+                    return [SetDataIngestionView(destination)]
+            return []
+        navigation, buttons, content_y = self._ingestion_flow_geometry(current, bounds, view.scale)
+        for _, destination, button in navigation:
+            if self._inside(button, x, y):
+                if destination is not DataIngestionView.API_TOKENS:
+                    self._secret_entry.clear()
+                return [SetDataIngestionView(destination)]
+        for action_id, _, button in buttons:
+            if not self._inside(button, x, y):
+                continue
+            self._open_schema_mapping_column = None
+            if action_id == "catalog":
+                return [SetDataIngestionView(DataIngestionView.CATALOG)]
+            if action_id in {"wizard_back", "wizard_next"}:
+                steps = tuple(DatasetWizardStep)
+                index = steps.index(current.dataset_wizard_step)
+                next_index = index + (-1 if action_id == "wizard_back" else 1)
+                if 0 <= next_index < len(steps):
+                    return [SetDatasetWizardStep(steps[next_index])]
+                return []
+            if action_id == "open_research" and current.last_successful_dataset_build is not None:
+                binding = current.last_successful_dataset_build.binding
+                if binding is None:
+                    return []
+                query = replace(
+                    default_research_query(),
+                    dataset_binding=binding,
+                )
+                return [SelectWorkspace(Workspace.RESEARCH), RequestResearch(query)]
+            if action_id == "close_browser":
+                self._last_file_browser_click = None
+                return [CloseFileBrowser()]
+            if action_id == "select_file":
+                selected = next(
+                    (
+                        entry
+                        for entry in current.file_browser_entries
+                        if entry.source_name == current.selected_file_browser_path
+                        and entry.kind is FileBrowserEntryKind.FILE
+                    ),
+                    None,
+                )
+                if selected is None or selected.source_kind is None:
+                    return []
+                self._last_file_browser_click = None
+                return [
+                    RequestFilePreview(
+                        FilePreviewRequest(
+                            f"file-preview-{current.generation:020d}",
+                            current.generation,
+                            selected.source_name,
+                            selected.source_kind,
+                            current.ingestion_scenario,
+                        )
+                    )
+                ]
+            if action_id == "choose_file" and current.snapshot is not None:
+                return [RequestFileBrowser(self._file_browser_request(current, location=None))]
+            if action_id == "discover":
+                return [
+                    RequestSymbolDiscovery(
+                        SymbolDiscoveryRequest(
+                            f"symbols-{current.generation:020d}",
+                            current.generation,
+                            "",
+                            scenario=current.ingestion_scenario,
+                        )
+                    )
+                ]
+            if action_id == "select" and current.discovered_symbols:
+                return [
+                    SetSelectedSymbols(
+                        tuple(item.symbol for item in current.discovered_symbols[:4])
+                    )
+                ]
+            if action_id == "submit":
+                return list(self._ingestion_submit_actions(current))
+            if action_id == "cancel" and current.active_ingestion_id is not None:
+                return [RequestIngestionCancellation(current.active_ingestion_id)]
+            if action_id.startswith("schedule_"):
+                action = self._schedule_command_action(current, action_id)
+                return [] if action is None else [action]
+            credential = CredentialRequest(
+                f"credential-{current.generation:020d}",
+                f"credential-command-{current.generation:020d}",
+                current.generation,
+            )
+            if action_id == "credential_save" and self._secret_entry.length:
+                return [
+                    RequestCredentialSave(
+                        CredentialSecretRequest(credential, self._secret_entry.take())
+                    )
+                ]
+            if action_id == "credential_test" and self._secret_entry.length:
+                return [
+                    RequestCredentialTest(
+                        CredentialSecretRequest(credential, self._secret_entry.take())
+                    )
+                ]
+            if action_id == "credential_delete":
+                self._secret_entry.clear()
+                return [RequestCredentialDelete(credential)]
+            return []
+        if current.ingestion_view is DataIngestionView.FILE_BROWSER:
+            listing = current.file_browser
+            if listing is None and not current.file_browser_entries:
+                return []
+            list_y = content_y + 36 * view.scale
+            for entry, row in self._file_browser_entry_layout(
+                current,
+                bounds.x,
+                list_y,
+                bounds.width,
+                max(0, bounds.y + bounds.height - list_y),
+                view.scale,
+            ):
+                if not self._inside(row, x, y):
+                    continue
+                previous = self._last_file_browser_click
+                self._last_file_browser_click = (
+                    (entry.source_name, event_time) if event_time is not None else None
+                )
+                if (
+                    event_time is not None
+                    and previous is not None
+                    and previous[0] == entry.source_name
+                    and 0 <= event_time - previous[1] <= 0.5
+                    and entry.kind in {FileBrowserEntryKind.PARENT, FileBrowserEntryKind.FOLDER}
+                ):
+                    self._last_file_browser_click = None
+                    return [
+                        RequestFileBrowser(
+                            self._file_browser_request(current, location=entry.source_name)
+                        )
+                    ]
+                return [SelectFileBrowserEntry(entry.source_name)]
+            self._last_file_browser_click = None
+            return []
+        if current.ingestion_view is DataIngestionView.NEW_DATASET:
+            if current.dataset_wizard_step is not DatasetWizardStep.SELECT_SOURCE:
+                for step, _, button in self._dataset_wizard_step_layout(
+                    bounds.x, content_y, bounds.width, view.scale
+                ):
+                    if self._inside(button, x, y):
+                        self._open_schema_mapping_column = None
+                        return [SetDatasetWizardStep(step)]
+            wizard_y = content_y + 34 * view.scale
+            if current.dataset_wizard_step is DatasetWizardStep.SELECT_SOURCE:
+                for source_id, row in self._dataset_source_layout(
+                    current,
+                    bounds.x,
+                    wizard_y + 22 * view.scale,
+                    bounds.width,
+                    view.scale,
+                ):
+                    if self._inside(row, x, y):
+                        return [SelectDatasetSource(source_id)]
+            if current.dataset_wizard_step is DatasetWizardStep.MAP_SCHEMA:
+                dense_schema = bounds.height / view.scale < 260
+                mapping_y = wizard_y + (24 if dense_schema else 70) * view.scale
+                mapping_layout = self._dataset_schema_mapping_layout(
+                    current,
+                    bounds.x,
+                    mapping_y,
+                    bounds.width,
+                    view.scale,
+                    dense=dense_schema,
+                )
+                open_mapping = next(
+                    (
+                        (mapping, role_button)
+                        for mapping, _, role_button in mapping_layout
+                        if mapping.source_column == self._open_schema_mapping_column
+                    ),
+                    None,
+                )
+                if open_mapping is not None:
+                    mapping, role_button = open_mapping
+                    for role, option in self._dataset_schema_dropdown_layout(
+                        role_button,
+                        bounds.x,
+                        bounds.width,
+                        bounds.y + bounds.height,
+                        view.scale,
+                        dense=dense_schema,
+                    ):
+                        if self._inside(option, x, y):
+                            self._open_schema_mapping_column = None
+                            return self._schema_mapping_actions(current, mapping, role)
+                elif self._open_schema_mapping_column is not None:
+                    self._open_schema_mapping_column = None
+                for mapping, _, role_button in mapping_layout:
+                    if not self._inside(role_button, x, y):
+                        continue
+                    self._open_schema_mapping_column = (
+                        None
+                        if self._open_schema_mapping_column == mapping.source_column
+                        else mapping.source_column
+                    )
+                    return []
+                if open_mapping is not None:
+                    self._open_schema_mapping_column = None
+                    return []
+            if current.dataset_wizard_step is DatasetWizardStep.SOURCE_SELECTION:
+                selection_y = wizard_y + 78 * view.scale
+                for action_id, _, _, button in self._new_dataset_option_layout(
+                    current,
+                    bounds.x,
+                    selection_y,
+                    view.scale,
+                    dense=bounds.height / view.scale < 220,
+                ):
+                    if not self._inside(button, x, y):
+                        continue
+                    interval = action_id.removeprefix("interval_")
+                    if action_id.startswith("interval_"):
+                        return [
+                            UpdateIngestionForm(
+                                interval,
+                                current.form_session,
+                                current.form_adjustment,
+                                ImportMode.CREATE,
+                                current.form_source_timezone,
+                            )
+                        ]
+                    session = (
+                        SessionPolicy.ALL if action_id == "session_all" else SessionPolicy.REGULAR
+                    )
+                    if action_id.startswith("session_"):
+                        return [
+                            UpdateIngestionForm(
+                                current.form_interval,
+                                session,
+                                current.form_adjustment,
+                                ImportMode.CREATE,
+                                current.form_source_timezone,
+                            )
+                        ]
+                    adjustment = (
+                        AdjustmentPolicy.PROVIDER_SPLIT_ADJUSTED
+                        if action_id == "adjustment_split"
+                        else AdjustmentPolicy.RAW
+                    )
+                    if action_id.startswith("adjustment_"):
+                        return [
+                            UpdateIngestionForm(
+                                current.form_interval,
+                                current.form_session,
+                                adjustment,
+                                ImportMode.CREATE,
+                                current.form_source_timezone,
+                            )
+                        ]
+                    if action_id.startswith("timezone_"):
+                        return [
+                            UpdateIngestionForm(
+                                current.form_interval,
+                                current.form_session,
+                                current.form_adjustment,
+                                ImportMode.CREATE,
+                                ("America/New_York" if action_id == "timezone_new_york" else "UTC"),
+                            )
+                        ]
+                    return []
+            for step, _, button in self._dataset_wizard_step_layout(
+                bounds.x, content_y, bounds.width, view.scale
+            ):
+                if self._inside(button, x, y):
+                    return [SetDatasetWizardStep(step)]
+        return []
+
+    @staticmethod
+    def _ingestion_submit_actions(
+        current: Phase7WorkspaceState,
+    ) -> tuple[UIAction, ...]:
+        if current.snapshot is None:
+            return ()
+        entry = current.snapshot.catalog[0]
+        creating = current.ingestion_view is DataIngestionView.NEW_DATASET
+        if (
+            current.ingestion_view in {DataIngestionView.FILE_IMPORT, DataIngestionView.NEW_DATASET}
+            and current.file_preview is None
+        ):
+            return ()
+        if (
+            current.ingestion_view is DataIngestionView.MASSIVE_PULL
+            and not current.selected_symbols
+        ):
+            return ()
+        symbols = current.selected_symbols or entry.symbols[:2]
+        plan = IngestionPlan(
+            f"ingestion-command-{current.generation:020d}",
+            f"ingestion-{current.generation:020d}",
+            current.generation,
+            "dataset-simulated-new" if creating else entry.dataset_id,
+            0 if creating else entry.revision,
+            tuple(sorted(symbols)),
+            current.form_interval,
+            entry.coverage,
+            current.form_session,
+            current.form_adjustment,
+            ImportMode.CREATE if creating else current.form_mode,
+            current.ingestion_scenario,
+            current.form_source_timezone,
+            (
+                current.file_preview.request.source_name
+                if current.file_preview is not None
+                and current.ingestion_view
+                in {DataIngestionView.FILE_IMPORT, DataIngestionView.NEW_DATASET}
+                else None
+            ),
+            () if current.file_preview is None else current.file_preview.columns,
+            "Imported US Equities" if creating else entry.name,
+        )
+        if current.ingestion_status is not IngestionStatus.CONFIRMING:
+            return (ConfirmIngestion(plan),)
+        if current.ingestion_view is DataIngestionView.MASSIVE_PULL:
+            return (RequestMassivePull(plan),)
+        if current.ingestion_view in {
+            DataIngestionView.FILE_IMPORT,
+            DataIngestionView.NEW_DATASET,
+        }:
+            return (RequestFileIngestion(plan),)
+        return ()
+
+    @staticmethod
+    def _schedule_command_action(
+        current: Phase7WorkspaceState, action_id: str
+    ) -> RequestScheduleCommand | None:
+        if current.snapshot is None:
+            return None
+        entry = current.snapshot.catalog[0]
+        if action_id == "schedule_create":
+            schedule = DataSchedule(
+                "schedule-simulated-hourly",
+                1,
+                "Simulated hourly refresh",
+                entry.dataset_id,
+                entry.symbols[:2],
+                "1h",
+                SessionPolicy.REGULAR,
+                AdjustmentPolicy.PROVIDER_SPLIT_ADJUSTED,
+                ScheduleCadence.HOURLY,
+                True,
+                next_run_at=current.snapshot.replay_clock + timedelta(hours=1),
+            )
+            kind = ScheduleCommandKind.CREATE
+            expected_revision = 0
+        else:
+            selected = next(
+                (
+                    item
+                    for item in current.schedules
+                    if item.schedule_id == current.selected_schedule_id
+                ),
+                current.schedules[0] if current.schedules else None,
+            )
+            if selected is None:
+                return None
+            kind = {
+                "schedule_run": ScheduleCommandKind.RUN_NOW,
+                "schedule_update": ScheduleCommandKind.UPDATE,
+                "schedule_enabled": ScheduleCommandKind.SET_ENABLED,
+                "schedule_delete": ScheduleCommandKind.DELETE,
+            }.get(action_id)
+            if kind is None:
+                return None
+            schedule = (
+                replace(selected, enabled=not selected.enabled)
+                if kind is ScheduleCommandKind.SET_ENABLED
+                else replace(
+                    selected,
+                    cadence=ScheduleCadence.HOURLY
+                    if selected.cadence is ScheduleCadence.DAILY
+                    else ScheduleCadence.DAILY,
+                )
+                if kind is ScheduleCommandKind.UPDATE
+                else selected
+            )
+            expected_revision = selected.revision
+        return RequestScheduleCommand(
+            ScheduleCommand(
+                f"schedule-{kind.value}-{current.generation:020d}",
+                f"schedule-{kind.value}-command-{current.generation:020d}",
+                current.generation,
+                kind,
+                schedule,
+                expected_revision,
+            )
+        )
+
     def settings_click_actions(self, view: ShellView, x: float, y: float) -> list[UIAction]:
         """Map a Settings-overlay click to closed actions."""
         scale = view.scale
-        left, top, width, _ = self._modal_bounds(view, 620, 350)
+        left, top, width, _ = self._settings_modal_bounds(view)
         if (
             left + width - 88 * scale <= x <= left + width - 20 * scale
             and top + 14 * scale <= y <= top + 46 * scale
         ):
+            self._secret_entry.clear()
             return [SetSettingsOpen(False)]
         button_y = top + 166 * scale
         padding, gap = 20 * scale, 8 * scale
@@ -1342,10 +2585,18 @@ class RaylibUIAdapter:
         body_x, body_y, body_w, body_h = body.x, body.y, body.width, body.height
         rl.begin_scissor_mode(round(body_x), round(body_y), round(body_w), round(body_h))
         try:
+            panel_title = selected_panel.title
+            phase7 = view.phase7_workspace
+            if (
+                phase7 is not None
+                and selected_panel.panel_id == "data-catalog"
+                and phase7.ingestion_view is not DataIngestionView.CATALOG
+            ):
+                panel_title = phase7.ingestion_view.value.replace("_", " ").title()
             self._text(
                 rl,
                 self._inter_font,
-                selected_panel.title,
+                panel_title,
                 body_x + 14 * scale,
                 body_y + 12 * scale,
                 16,
@@ -2206,7 +3457,7 @@ class RaylibUIAdapter:
                 (126, 136, 150, 255),
             )
             return
-        if current.state is Phase7LoadState.EMPTY:
+        if current.state is Phase7LoadState.EMPTY and panel_id != "data-catalog":
             self._text(
                 rl,
                 self._inter_font,
@@ -2217,6 +3468,20 @@ class RaylibUIAdapter:
                 scale,
                 (126, 136, 150, 255),
             )
+            return
+        if panel_id == "data-schedules":
+            self._draw_schedules_panel(
+                rl,
+                replace(current, ingestion_view=DataIngestionView.SCHEDULES),
+                x,
+                y + 28 * scale,
+                width,
+                height - 28 * scale,
+                scale,
+            )
+            return
+        if panel_id.startswith("data-") and current.ingestion_view is not DataIngestionView.CATALOG:
+            self._draw_ingestion_flow(rl, current, x, y, width, height, scale)
             return
         if panel_id == "data-catalog":
             self._draw_catalog(rl, view, x, y, width, height, scale)
@@ -2324,6 +3589,935 @@ class RaylibUIAdapter:
                 9,
                 scale,
                 (60, 200, 200, 255),
+            )
+
+    def _draw_ingestion_flow(
+        self,
+        rl: object,
+        current: Phase7WorkspaceState,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> None:
+        bounds = ShellRect(x, y, width, height)
+        dense = height / scale < 260
+        navigation, actions, body_y = self._ingestion_flow_geometry(current, bounds, scale)
+        for text, item_view, button in navigation:
+            selected = current.ingestion_view is item_view
+            self._rect(
+                rl,
+                button.x,
+                button.y,
+                button.width,
+                button.height,
+                (23, 28, 34, 255) if selected else (11, 13, 16, 255),
+            )
+            self._outline(
+                rl,
+                button.x,
+                button.y,
+                button.width,
+                button.height,
+                (60, 200, 200, 255) if selected else (37, 43, 51, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                text,
+                button.x + 8 * scale,
+                button.y + 7 * scale,
+                9,
+                scale,
+                (214, 220, 229, 255),
+            )
+        title_y = y
+        if not dense:
+            self._text(
+                rl,
+                self._mono_font,
+                (
+                    f"status {current.ingestion_status.value}  |  "
+                    f"fixture {current.ingestion_scenario.value} (G cycles)"
+                ),
+                x,
+                title_y,
+                9,
+                scale,
+                (126, 136, 150, 255),
+            )
+        selected_browser_file = any(
+            entry.source_name == current.selected_file_browser_path
+            and entry.kind is FileBrowserEntryKind.FILE
+            for entry in current.file_browser_entries
+        )
+        for action_id, label, button in actions:
+            enabled = action_id != "select_file" or selected_browser_file
+            self._rect(rl, button.x, button.y, button.width, button.height, (23, 28, 34, 255))
+            self._outline(
+                rl,
+                button.x,
+                button.y,
+                button.width,
+                button.height,
+                (60, 200, 200, 255) if enabled else (37, 43, 51, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                label,
+                button.x + 10 * scale,
+                button.y + 8 * scale,
+                10,
+                scale,
+                (214, 220, 229, 255) if enabled else (126, 136, 150, 255),
+            )
+        if current.ingestion_view is DataIngestionView.FILE_BROWSER:
+            listing = current.file_browser
+            self._text(
+                rl,
+                self._inter_font,
+                "Single-click a file, then Select. Double-click a folder to open it.",
+                x,
+                body_y,
+                10,
+                scale,
+                (214, 220, 229, 255),
+            )
+            location = "Loading files..." if listing is None else listing.location
+            self._text(
+                rl,
+                self._mono_font,
+                location,
+                x,
+                body_y + 20 * scale,
+                9,
+                scale,
+                (126, 136, 150, 255),
+            )
+            list_y = body_y + 36 * scale
+            for entry, row in self._file_browser_entry_layout(
+                current,
+                x,
+                list_y,
+                width,
+                max(0, y + height - list_y),
+                scale,
+            ):
+                selected = entry.source_name == current.selected_file_browser_path
+                self._rect(
+                    rl,
+                    row.x,
+                    row.y,
+                    row.width,
+                    row.height,
+                    (24, 55, 59, 255) if selected else (23, 28, 34, 255),
+                )
+                self._outline(
+                    rl,
+                    row.x,
+                    row.y,
+                    row.width,
+                    row.height,
+                    (60, 200, 200, 255) if selected else (37, 43, 51, 255),
+                )
+                kind_label = {
+                    FileBrowserEntryKind.PARENT: "[UP] ",
+                    FileBrowserEntryKind.FOLDER: "[DIR] ",
+                    FileBrowserEntryKind.FILE: (
+                        f"[{entry.source_kind.value.upper()}] "
+                        if entry.source_kind is not None
+                        else "[FILE] "
+                    ),
+                }[entry.kind]
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"{kind_label}{entry.display_name}",
+                    row.x + 10 * scale,
+                    row.y + 8 * scale,
+                    10,
+                    scale,
+                    (226, 244, 244, 255) if selected else (214, 220, 229, 255),
+                )
+            if listing is not None and not current.file_browser_entries:
+                file_kinds = (
+                    "CSV or PARQUET"
+                    if listing.request.source_kind is None
+                    else listing.request.source_kind.value.upper()
+                )
+                self._text(
+                    rl,
+                    self._inter_font,
+                    f"No folders or {file_kinds} files here.",
+                    x,
+                    body_y + 42 * scale,
+                    10,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+            elif current.file_browser_loading_page:
+                self._text(
+                    rl,
+                    self._mono_font,
+                    "Loading more entries...",
+                    x,
+                    min(y + height - 18 * scale, list_y + 12 * 34 * scale),
+                    9,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+        elif current.ingestion_view is DataIngestionView.API_TOKENS:
+            saved = "SAVED" if current.credential.saved else "NOT SAVED"
+            lines = [
+                ("Provider", "Massive"),
+                ("Credential", saved),
+                (
+                    "Last test",
+                    current.credential.safe_detail or "Not tested",
+                ),
+                ("Entry", "Transient secret buffer; value is never displayed"),
+                ("Actions", "Ctrl+Enter save/replace | Ctrl+T test | Delete remove"),
+            ]
+            self._draw_phase7_fields(rl, tuple(lines), x, body_y, scale)
+            warning_y = body_y + 142 * scale
+            self._outline(rl, x, warning_y, width, 54 * scale, (216, 180, 90, 255))
+            self._text(
+                rl,
+                self._inter_font,
+                "! Milestone 1b will store this token as plaintext in a separate",
+                x + 12 * scale,
+                warning_y + 10 * scale,
+                10,
+                scale,
+                (216, 180, 90, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                "  access-restricted application-data file. It will not be encrypted.",
+                x + 12 * scale,
+                warning_y + 30 * scale,
+                10,
+                scale,
+                (216, 180, 90, 255),
+            )
+        elif current.ingestion_view is DataIngestionView.NEW_DATASET:
+            for step, label, button in self._dataset_wizard_step_layout(x, body_y, width, scale):
+                selected_step = step is current.dataset_wizard_step
+                self._rect(
+                    rl,
+                    button.x,
+                    button.y,
+                    button.width,
+                    button.height,
+                    (24, 55, 59, 255) if selected_step else (23, 28, 34, 255),
+                )
+                self._outline(
+                    rl,
+                    button.x,
+                    button.y,
+                    button.width,
+                    button.height,
+                    (60, 200, 200, 255) if selected_step else (37, 43, 51, 255),
+                )
+                self._text(
+                    rl,
+                    self._inter_font,
+                    label,
+                    button.x + 6 * scale,
+                    button.y + 6 * scale,
+                    9,
+                    scale,
+                    (226, 244, 244, 255) if selected_step else (126, 136, 150, 255),
+                )
+            wizard_y = body_y + 34 * scale
+            selected_source = next(
+                (item for item in current.sources if item.source_id == current.selected_source_id),
+                None,
+            )
+            if current.dataset_wizard_step is DatasetWizardStep.SELECT_SOURCE:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "Select an existing source or acquire bars from CSV, Parquet, or Massive.",
+                    x,
+                    wizard_y,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                source_layout = dict(
+                    self._dataset_source_layout(current, x, wizard_y + 22 * scale, width, scale)
+                )
+                for source in current.sources[:5]:
+                    marker = "[x]" if source.source_id == current.selected_source_id else "[ ]"
+                    row = source_layout[source.source_id]
+                    self._rect(
+                        rl,
+                        row.x,
+                        row.y,
+                        row.width,
+                        row.height,
+                        (24, 55, 59, 255)
+                        if source.source_id == current.selected_source_id
+                        else (23, 28, 34, 255),
+                    )
+                    self._outline(
+                        rl,
+                        row.x,
+                        row.y,
+                        row.width,
+                        row.height,
+                        (60, 200, 200, 255)
+                        if source.source_id == current.selected_source_id
+                        else (37, 43, 51, 255),
+                    )
+                    self._text(
+                        rl,
+                        self._mono_font,
+                        (
+                            f"{marker} {source.name:<28} "
+                            f"{source.family.value}  {source.provider.value}"
+                        ),
+                        row.x + 8 * scale,
+                        row.y + 7 * scale,
+                        9,
+                        scale,
+                        (60, 200, 200, 255)
+                        if source.source_id == current.selected_source_id
+                        else (214, 220, 229, 255),
+                    )
+            elif current.dataset_wizard_step is DatasetWizardStep.MAP_SCHEMA:
+                preview = current.file_preview
+                if preview is not None:
+                    dense_schema = height / scale < 260
+                    file_name = preview.request.source_name.replace("\\", "/").rsplit("/", 1)[-1]
+                    self._text(
+                        rl,
+                        self._inter_font,
+                        f"Detected from {file_name} ({preview.request.source_kind.value.upper()})",
+                        x,
+                        wizard_y,
+                        10,
+                        scale,
+                        (60, 200, 200, 255),
+                    )
+                    if not dense_schema:
+                        self._text(
+                            rl,
+                            self._inter_font,
+                            (
+                                f"{preview.representative_rows} bounded preview rows | "
+                                "click a Maps to control to change its canonical role"
+                            ),
+                            x,
+                            wizard_y + 22 * scale,
+                            9,
+                            scale,
+                            (126, 136, 150, 255),
+                        )
+                        header_y = wizard_y + 48 * scale
+                        headers = (
+                            ("SOURCE COLUMN", 0.01),
+                            ("DETECTED TYPE", 0.29),
+                            ("MAPS TO", 0.56),
+                            ("STATUS", 0.79),
+                        )
+                        for label, fraction in headers:
+                            self._text(
+                                rl,
+                                self._mono_font,
+                                label,
+                                x + width * fraction,
+                                header_y,
+                                9,
+                                scale,
+                                (126, 136, 150, 255),
+                            )
+                    mapping_y = wizard_y + (24 if dense_schema else 70) * scale
+                    mapping_layout = self._dataset_schema_mapping_layout(
+                        current,
+                        x,
+                        mapping_y,
+                        width,
+                        scale,
+                        dense=dense_schema,
+                    )
+                    for mapping, row, role_button in mapping_layout:
+                        if not dense_schema:
+                            self._rect(rl, row.x, row.y, row.width, row.height, (23, 28, 34, 255))
+                            self._outline(
+                                rl, row.x, row.y, row.width, row.height, (37, 43, 51, 255)
+                            )
+                            self._text(
+                                rl,
+                                self._mono_font,
+                                mapping.source_column,
+                                row.x + 8 * scale,
+                                row.y + 7 * scale,
+                                9,
+                                scale,
+                                (214, 220, 229, 255),
+                            )
+                            self._text(
+                                rl,
+                                self._mono_font,
+                                mapping.source_type,
+                                row.x + width * 0.29,
+                                row.y + 7 * scale,
+                                9,
+                                scale,
+                                (214, 220, 229, 255),
+                            )
+                        self._rect(
+                            rl,
+                            role_button.x,
+                            role_button.y,
+                            role_button.width,
+                            role_button.height,
+                            (24, 55, 59, 255),
+                        )
+                        self._outline(
+                            rl,
+                            role_button.x,
+                            role_button.y,
+                            role_button.width,
+                            role_button.height,
+                            (60, 200, 200, 255),
+                        )
+                        self._text(
+                            rl,
+                            self._mono_font,
+                            (
+                                f"{mapping.source_column}>{mapping.role}"
+                                if dense_schema
+                                else (
+                                    f"{mapping.role}  ^"
+                                    if self._open_schema_mapping_column == mapping.source_column
+                                    else f"{mapping.role}  v"
+                                )
+                            ),
+                            role_button.x + (6 if dense_schema else 8) * scale,
+                            role_button.y + (5 if dense_schema else 7) * scale,
+                            7 if dense_schema else 9,
+                            scale,
+                            (226, 244, 244, 255),
+                        )
+                        if not dense_schema:
+                            self._text(
+                                rl,
+                                self._inter_font,
+                                "detected" if mapping.detected else "edited",
+                                row.x + width * 0.79,
+                                row.y + 7 * scale,
+                                9,
+                                scale,
+                                (76, 195, 138, 255) if mapping.detected else (216, 180, 90, 255),
+                            )
+                    open_mapping = next(
+                        (
+                            (mapping, role_button)
+                            for mapping, _, role_button in mapping_layout
+                            if mapping.source_column == self._open_schema_mapping_column
+                        ),
+                        None,
+                    )
+                    if open_mapping is not None:
+                        mapping, role_button = open_mapping
+                        for role, option in self._dataset_schema_dropdown_layout(
+                            role_button,
+                            x,
+                            width,
+                            y + height,
+                            scale,
+                            dense=dense_schema,
+                        ):
+                            selected_role = role == mapping.role
+                            self._rect(
+                                rl,
+                                option.x,
+                                option.y,
+                                option.width,
+                                option.height,
+                                (24, 55, 59, 255) if selected_role else (23, 28, 34, 255),
+                            )
+                            self._outline(
+                                rl,
+                                option.x,
+                                option.y,
+                                option.width,
+                                option.height,
+                                (60, 200, 200, 255) if selected_role else (37, 43, 51, 255),
+                            )
+                            self._text(
+                                rl,
+                                self._mono_font,
+                                f"{'[x]' if selected_role else '[ ]'} {role}",
+                                option.x + 6 * scale,
+                                option.y + (5 if dense_schema else 6) * scale,
+                                7 if dense_schema else 9,
+                                scale,
+                                (226, 244, 244, 255) if selected_role else (214, 220, 229, 255),
+                            )
+                elif selected_source is not None:
+                    self._text(
+                        rl,
+                        self._inter_font,
+                        f"Existing source schema: {selected_source.name}",
+                        x,
+                        wizard_y,
+                        10,
+                        scale,
+                        (60, 200, 200, 255),
+                    )
+                    for index, column in enumerate(selected_source.schema[:9]):
+                        self._text(
+                            rl,
+                            self._mono_font,
+                            (
+                                f"{column.name:<18} {column.type.value:<12} "
+                                f"{'nullable' if column.nullable else 'required'}"
+                            ),
+                            x,
+                            wizard_y + (24 + index * 20) * scale,
+                            9,
+                            scale,
+                            (214, 220, 229, 255),
+                        )
+                else:
+                    self._text(
+                        rl,
+                        self._inter_font,
+                        "Choose a file or existing source in Step 1 before mapping schema.",
+                        x,
+                        wizard_y,
+                        10,
+                        scale,
+                        (216, 180, 90, 255),
+                    )
+            elif current.dataset_wizard_step is DatasetWizardStep.SOURCE_SELECTION:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "Choose which records the dataset recipe consumes from this source.",
+                    x,
+                    wizard_y,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                source_scope = (
+                    "All symbols found in the selected file"
+                    if current.file_preview is not None
+                    else ", ".join(current.selected_symbols) or "source snapshot symbols"
+                )
+                self._draw_phase7_fields(
+                    rl,
+                    (("Symbols", source_scope), ("Range", "full validated source coverage")),
+                    x,
+                    wizard_y + 24 * scale,
+                    scale,
+                )
+                selection_y = wizard_y + 78 * scale
+                row_labels = ("Interval", "Session", "Adjustment", "Source timezone")
+                row_step = (22 if height / scale < 220 else 34) * scale
+                for index, label in enumerate(row_labels):
+                    self._text(
+                        rl,
+                        self._inter_font,
+                        label,
+                        x,
+                        selection_y + index * row_step + 7 * scale,
+                        9,
+                        scale,
+                        (126, 136, 150, 255),
+                    )
+                for _, label, selected, button in self._new_dataset_option_layout(
+                    current,
+                    x,
+                    selection_y,
+                    scale,
+                    dense=height / scale < 220,
+                ):
+                    self._rect(
+                        rl,
+                        button.x,
+                        button.y,
+                        button.width,
+                        button.height,
+                        (24, 55, 59, 255) if selected else (23, 28, 34, 255),
+                    )
+                    self._outline(
+                        rl,
+                        button.x,
+                        button.y,
+                        button.width,
+                        button.height,
+                        (60, 200, 200, 255) if selected else (37, 43, 51, 255),
+                    )
+                    self._text(
+                        rl,
+                        self._inter_font,
+                        label,
+                        button.x + 8 * scale,
+                        button.y + 7 * scale,
+                        9,
+                        scale,
+                        (226, 244, 244, 255) if selected else (214, 220, 229, 255),
+                    )
+            elif current.dataset_wizard_step is DatasetWizardStep.FEATURES:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "Ordered pipeline - inputs come from the source or an earlier step",
+                    x,
+                    wizard_y,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                for index, step in enumerate(current.dataset_recipe_steps[:10]):
+                    self._text(
+                        rl,
+                        self._mono_font,
+                        f"{index + 1:>2}. {step.kind:<20} -> {step.output_name}",
+                        x,
+                        wizard_y + (26 + index * 22) * scale,
+                        9,
+                        scale,
+                        (60, 200, 200, 255),
+                    )
+            elif current.dataset_wizard_step is DatasetWizardStep.REVIEW:
+                source_name = (
+                    current.file_preview.request.source_name.replace("\\", "/").rsplit("/", 1)[-1]
+                    if current.file_preview is not None
+                    else selected_source.name
+                    if selected_source is not None
+                    else "none"
+                )
+                self._draw_phase7_fields(
+                    rl,
+                    (
+                        ("Source", source_name),
+                        (
+                            "Family",
+                            selected_source.family.value
+                            if selected_source is not None
+                            else "market_bars",
+                        ),
+                        ("Transformations", str(len(current.dataset_recipe_steps))),
+                        ("Registry", "builtin-market-bars-v1"),
+                        ("Targets", "configured downstream in Research / Experiments"),
+                    ),
+                    x,
+                    wizard_y,
+                    scale,
+                )
+            else:
+                build = current.last_successful_dataset_build
+                if build is None:
+                    self._text(
+                        rl,
+                        self._inter_font,
+                        "Save the recipe, then build a bounded asynchronous preview.",
+                        x,
+                        wizard_y,
+                        10,
+                        scale,
+                        (126, 136, 150, 255),
+                    )
+                else:
+                    self._draw_phase7_fields(
+                        rl,
+                        (
+                            ("Build", build.build_id),
+                            ("State", build.state.value),
+                            ("Rows", str(build.preview_rows)),
+                            ("Lookback", str(build.validation.accumulated_lookback)),
+                            (
+                                "Open in Research",
+                                "enabled" if build.binding is not None else "disabled",
+                            ),
+                        ),
+                        x,
+                        wizard_y,
+                        scale,
+                    )
+        elif current.ingestion_view is DataIngestionView.FILE_IMPORT:
+            preview_y = body_y
+            if not dense:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "P browser | M mapping | T timezone | B/H/J/N policies | Enter review/confirm",
+                    x,
+                    preview_y,
+                    10,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+            preview_offset = 0 if dense else 28
+            preview = current.file_preview
+            if preview is None:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "Choose a CSV or Parquet file to detect timestamp, symbol, and OHLCV columns.",
+                    x,
+                    preview_y + preview_offset * scale,
+                    10,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+            else:
+                headers = "SOURCE COLUMN        DETECTED ROLE      TYPE"
+                self._text(
+                    rl,
+                    self._mono_font,
+                    headers,
+                    x,
+                    preview_y + preview_offset * scale,
+                    9,
+                    scale,
+                    (60, 200, 200, 255),
+                )
+                for index, mapping in enumerate(preview.columns[:8]):
+                    line = f"{mapping.source_column:<20} {mapping.role:<18} {mapping.source_type}"
+                    self._text(
+                        rl,
+                        self._mono_font,
+                        line,
+                        x,
+                        preview_y + (preview_offset + 22 + index * 20) * scale,
+                        9,
+                        scale,
+                        (214, 220, 229, 255),
+                    )
+                if current.ingestion_view is DataIngestionView.FILE_IMPORT:
+                    self._text(
+                        rl,
+                        self._inter_font,
+                        (
+                            f"T timezone {current.form_source_timezone} | "
+                            f"B interval {current.form_interval} | "
+                            f"H session {current.form_session.value} | "
+                            f"J adjustment {current.form_adjustment.value} | "
+                            f"N mode {current.form_mode.value}"
+                        ),
+                        x,
+                        body_y + 202 * scale,
+                        9,
+                        scale,
+                        (126, 136, 150, 255),
+                    )
+        elif current.ingestion_view is DataIngestionView.MASSIVE_PULL:
+            if not dense:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    (
+                        "D searches | A selects | B/H/J/N edit policies | "
+                        "Enter reviews/confirms | X cancels"
+                    ),
+                    x,
+                    body_y,
+                    10,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+            row_offset = 0 if dense else 28
+            for index, symbol in enumerate(current.discovered_symbols[:8]):
+                selected = symbol.symbol in current.selected_symbols
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"{'[x]' if selected else '[ ]'} {symbol.symbol:<6} {symbol.name}",
+                    x,
+                    body_y + (row_offset + index * 21) * scale,
+                    9,
+                    scale,
+                    (60, 200, 200, 255) if selected else (214, 220, 229, 255),
+                )
+            self._text(
+                rl,
+                self._inter_font,
+                (
+                    f"{current.form_interval} | {current.form_session.value} | "
+                    f"{current.form_adjustment.value} | {current.form_mode.value}"
+                ),
+                x,
+                body_y + 206 * scale,
+                9,
+                scale,
+                (126, 136, 150, 255),
+            )
+        elif current.ingestion_view is DataIngestionView.SCHEDULES:
+            if not dense:
+                self._text(
+                    rl,
+                    self._inter_font,
+                    "C create | U edit cadence | E enable/disable | R run now | Delete remove",
+                    x,
+                    body_y,
+                    10,
+                    scale,
+                    (126, 136, 150, 255),
+                )
+            row_offset = 0 if dense else 28
+            for index, schedule in enumerate(current.schedules[:10]):
+                self._text(
+                    rl,
+                    self._mono_font,
+                    (
+                        f"{schedule.name:<30} {schedule.cadence.value:<7} "
+                        f"{'enabled' if schedule.enabled else 'disabled'} "
+                        f"r{schedule.revision}"
+                    ),
+                    x,
+                    body_y + (row_offset + index * 22) * scale,
+                    9,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+            self._text(
+                rl,
+                self._inter_font,
+                "Schedules run only while the coordinator is open; startup coalesces missed runs.",
+                x,
+                body_y + 206 * scale,
+                9,
+                scale,
+                (216, 180, 90, 255),
+            )
+        if current.progress is not None:
+            progress_y = min(y + height - 62 * scale, body_y + 250 * scale)
+            ratio = current.progress.completed_units / max(1, current.progress.total_units)
+            self._outline(rl, x, progress_y, width, 18 * scale, (37, 43, 51, 255))
+            self._rect(rl, x, progress_y, width * ratio, 18 * scale, (60, 200, 200, 255))
+            self._text(
+                rl,
+                self._mono_font,
+                current.progress.message,
+                x,
+                progress_y + 25 * scale,
+                9,
+                scale,
+                (214, 220, 229, 255),
+            )
+        elif current.error:
+            self._text(
+                rl,
+                self._inter_font,
+                current.error,
+                x,
+                min(y + height - 28 * scale, body_y + 250 * scale),
+                10,
+                scale,
+                (239, 107, 115, 255),
+            )
+
+    def _draw_schedules_panel(
+        self,
+        rl: object,
+        current: Phase7WorkspaceState,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        scale: float,
+    ) -> None:
+        actions = self._flow_action_layout(current, x, y, width, scale)
+        for index, (_, label, button) in enumerate(actions):
+            primary = index == 0
+            self._rect(
+                rl,
+                button.x,
+                button.y,
+                button.width,
+                button.height,
+                (24, 55, 59, 255) if primary else (23, 28, 34, 255),
+            )
+            self._outline(
+                rl,
+                button.x,
+                button.y,
+                button.width,
+                button.height,
+                (60, 200, 200, 255) if primary else (37, 43, 51, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                label,
+                button.x + 10 * scale,
+                button.y + 8 * scale,
+                10,
+                scale,
+                (226, 244, 244, 255) if primary else (214, 220, 229, 255),
+            )
+        table_y = max(item[2].y + item[2].height for item in actions) + 14 * scale
+        self._text(
+            rl,
+            self._inter_font,
+            "Schedules run while the coordinator is open; missed runs are coalesced at startup.",
+            x,
+            table_y,
+            9,
+            scale,
+            (216, 180, 90, 255),
+        )
+        table_y += 28 * scale
+        self._rect(rl, x, table_y, width, 24 * scale, (23, 28, 34, 255))
+        columns = (("Schedule", 0.0), ("Cadence", 0.48), ("Status", 0.67), ("Revision", 0.86))
+        for label, fraction in columns:
+            self._text(
+                rl,
+                self._inter_font,
+                label,
+                x + width * fraction + 6 * scale,
+                table_y + 6 * scale,
+                9,
+                scale,
+                (126, 136, 150, 255),
+            )
+        maximum_rows = max(0, int((y + height - table_y - 24 * scale) // (28 * scale)))
+        for index, schedule in enumerate(current.schedules[:maximum_rows]):
+            row_y = table_y + (index + 1) * 28 * scale
+            self._text(
+                rl,
+                self._inter_font,
+                schedule.name,
+                x + 6 * scale,
+                row_y + 7 * scale,
+                9,
+                scale,
+                (214, 220, 229, 255),
+            )
+            values = (
+                (schedule.cadence.value, 0.48),
+                ("enabled" if schedule.enabled else "disabled", 0.67),
+                (str(schedule.revision), 0.86),
+            )
+            for value, fraction in values:
+                self._text(
+                    rl,
+                    self._mono_font,
+                    value,
+                    x + width * fraction + 6 * scale,
+                    row_y + 7 * scale,
+                    9,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+            self._line(
+                rl,
+                x,
+                row_y + 27 * scale,
+                x + width,
+                row_y + 27 * scale,
+                (37, 43, 51, 255),
             )
 
     def _draw_phase7_failure(
@@ -3098,9 +5292,91 @@ class RaylibUIAdapter:
             scale,
             (214, 220, 229, 255),
         )
-        table_y = y + 24 * scale
+        action_layout = self._catalog_action_layout(x, y + 26 * scale, width, scale)
+        for index, (label, _, button) in enumerate(action_layout):
+            primary = index in {0, 1}
+            self._rect(
+                rl,
+                button.x,
+                button.y,
+                button.width,
+                button.height,
+                (24, 55, 59, 255) if primary else (23, 28, 34, 255),
+            )
+            self._outline(
+                rl,
+                button.x,
+                button.y,
+                button.width,
+                button.height,
+                (60, 200, 200, 255) if primary else (37, 43, 51, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                label,
+                button.x + 10 * scale,
+                button.y + 7 * scale,
+                10,
+                scale,
+                (226, 244, 244, 255) if primary else (214, 220, 229, 255),
+            )
+        table_y = max(item[2].y + item[2].height for item in action_layout) + 10 * scale
+        phase7 = view.phase7_workspace
+        if phase7 is not None:
+            self._text(
+                rl,
+                self._inter_font,
+                "SOURCES",
+                x + 6 * scale,
+                table_y + 6 * scale,
+                10,
+                scale,
+                (60, 200, 200, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                "Family / Provider",
+                x + width * 0.52,
+                table_y + 6 * scale,
+                10,
+                scale,
+                (126, 136, 150, 255),
+            )
+            for index, source in enumerate(phase7.sources[:4]):
+                row_y = table_y + (24 + index * 26) * scale
+                self._text(
+                    rl,
+                    self._inter_font,
+                    source.name,
+                    x + 6 * scale,
+                    row_y + 6 * scale,
+                    9,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                self._text(
+                    rl,
+                    self._mono_font,
+                    f"{source.family.value} / {source.provider.value}  r{source.revision}",
+                    x + width * 0.52,
+                    row_y + 6 * scale,
+                    9,
+                    scale,
+                    (214, 220, 229, 255),
+                )
+                self._line(
+                    rl,
+                    x,
+                    row_y + 25 * scale,
+                    x + width,
+                    row_y + 25 * scale,
+                    (37, 43, 51, 255),
+                )
+            table_y += (34 + min(4, len(phase7.sources)) * 26) * scale
         self._rect(rl, x, table_y, width, 24 * scale, (23, 28, 34, 255))
-        columns = (("Dataset", 0.0), ("Status", 0.42), ("Rows", 0.62), ("Revision", 0.79))
+        columns = (("DATASETS (latest)", 0.0), ("Status", 0.42), ("Rows", 0.62), ("Version", 0.79))
         for label, fraction in columns:
             self._text(
                 rl,
@@ -3108,6 +5384,17 @@ class RaylibUIAdapter:
                 label,
                 x + width * fraction + 6 * scale,
                 table_y + 6 * scale,
+                10,
+                scale,
+                (126, 136, 150, 255),
+            )
+        if not view.datasets:
+            self._text(
+                rl,
+                self._inter_font,
+                "No datasets are available. Create a new dataset to begin.",
+                x + 6 * scale,
+                table_y + 36 * scale,
                 10,
                 scale,
                 (126, 136, 150, 255),
@@ -3282,7 +5569,7 @@ class RaylibUIAdapter:
 
     def _draw_settings_modal(self, view: ShellView, rl: object) -> None:
         scale = view.scale
-        x, y, width, height = self._modal_bounds(view, 620, 350)
+        x, y, width, height = self._settings_modal_bounds(view)
         self._rect(rl, x, y, width, height, (17, 21, 26, 255))
         self._outline(rl, x, y, width, height, (60, 200, 200, 255))
         padding = 20 * scale
@@ -3306,6 +5593,73 @@ class RaylibUIAdapter:
             False,
             scale,
         )
+        if (
+            view.phase7_workspace is not None
+            and view.phase7_workspace.ingestion_view is DataIngestionView.API_TOKENS
+            and scale >= 1.5
+        ):
+            current = view.phase7_workspace
+            token_y = y + 76 * scale
+            self._text(
+                rl,
+                self._inter_font,
+                "API Tokens / Massive",
+                x + padding,
+                token_y,
+                14,
+                scale,
+                (60, 200, 200, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                "Saved" if current.credential.saved else "Not saved",
+                x + padding,
+                token_y + 30 * scale,
+                12,
+                scale,
+                (76, 195, 138, 255) if current.credential.saved else (126, 136, 150, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                current.credential.safe_detail or "Type token, then Ctrl+Enter save / Ctrl+T test",
+                x + padding,
+                token_y + 54 * scale,
+                10,
+                scale,
+                (214, 220, 229, 255),
+            )
+            warning_y = token_y + 84 * scale
+            self._outline(
+                rl,
+                x + padding,
+                warning_y,
+                width - 2 * padding,
+                58 * scale,
+                (216, 180, 90, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                "! Milestone 1b uses plaintext access-restricted storage;",
+                x + padding + 8 * scale,
+                warning_y + 10 * scale,
+                9,
+                scale,
+                (216, 180, 90, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                "  the token is not encrypted and never displayed.",
+                x + padding + 8 * scale,
+                warning_y + 31 * scale,
+                9,
+                scale,
+                (216, 180, 90, 255),
+            )
+            return
         content_y = y + 72 * scale
         self._text(
             rl,
@@ -3339,6 +5693,57 @@ class RaylibUIAdapter:
             scale,
             (126, 136, 150, 255),
         )
+        if view.phase7_workspace is not None:
+            current = view.phase7_workspace
+            token_y = content_y + 190 * scale
+            self._line(
+                rl,
+                x + padding,
+                token_y - 16 * scale,
+                x + width - padding,
+                token_y - 16 * scale,
+                (37, 43, 51, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                "API Tokens / Massive",
+                x + padding,
+                token_y,
+                14,
+                scale,
+                (60, 200, 200, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                "Saved" if current.credential.saved else "Not saved",
+                x + padding,
+                token_y + 28 * scale,
+                12,
+                scale,
+                (76, 195, 138, 255) if current.credential.saved else (126, 136, 150, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                current.credential.safe_detail or "Type token, then Ctrl+Enter save / Ctrl+T test",
+                x + padding,
+                token_y + 50 * scale,
+                10,
+                scale,
+                (214, 220, 229, 255),
+            )
+            self._text(
+                rl,
+                self._inter_font,
+                "! Plaintext application-data storage is planned for Milestone 1b; not encrypted.",
+                x + padding,
+                token_y + 78 * scale,
+                9,
+                scale,
+                (216, 180, 90, 255),
+            )
         content_y += 38 * scale
         gap = 8 * scale
         button_width = (width - 2 * padding - 4 * gap) / 5
@@ -3464,6 +5869,15 @@ class RaylibUIAdapter:
         width = min(logical_width * scale, max(0, view.viewport.width - 2 * margin))
         height = min(logical_height * scale, max(0, view.viewport.height - 2 * margin))
         return (view.viewport.width - width) / 2, (view.viewport.height - height) / 2, width, height
+
+    @classmethod
+    def _settings_modal_bounds(cls, view: ShellView) -> tuple[float, float, float, float]:
+        x, y, width, base_height = cls._modal_bounds(view, 620, 350)
+        if view.phase7_workspace is None:
+            return x, y, width, base_height
+        margin = 16 * view.scale
+        height = min(520 * view.scale, max(base_height, view.viewport.height - y - margin))
+        return x, y, width, height
 
     def _dock_header_buttons(
         self, rl: object, x: float, y: float, width: float, scale: float

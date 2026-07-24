@@ -16,20 +16,44 @@ from enum import StrEnum
 from corthena.ui.client.errors import RequestCancelledError
 from corthena.ui.client.protocol import UIClientProtocol
 from corthena.ui.data_experiments.actions import (
+    BrowseFiles,
+    BuildDataset,
     CancelPhase7,
+    CredentialCompleted,
     DataImportCompleted,
+    DatasetBuildCompleted,
+    DatasetSaveCompleted,
+    DeleteCredential,
+    DiscoverSymbols,
     DraftEvaluationCompleted,
     DraftSaveCompleted,
     EvaluateDraft,
+    ExecuteScheduleCommand,
+    FileBrowserCompleted,
+    FilePreviewCompleted,
+    IngestionCompleted,
+    IngestionOperationCancelled,
+    IngestionOperationFailed,
+    LoadCredentialStatus,
     LoadPhase7,
     Phase7Cancelled,
     Phase7Completed,
     Phase7Effect,
     Phase7Failed,
+    PreviewFile,
+    ReconcileData,
+    ReconciliationCompleted,
     RunDataImport,
+    RunFileIngestion,
+    RunMassivePull,
+    SaveCredential,
+    SaveDataset,
     SaveDraft,
+    ScheduleCommandCompleted,
     SubmissionCompleted,
     SubmitExperiment,
+    SymbolDiscoveryCompleted,
+    TestCredential,
 )
 from corthena.ui.data_experiments.models import Phase7Workspace
 from corthena.ui.jobs_results.actions import (
@@ -80,6 +104,22 @@ from corthena.ui.state import (
     SnapshotFailed,
     UIAction,
     UIEffect,
+)
+
+_INGESTION_EFFECT_TYPES = (
+    LoadCredentialStatus,
+    SaveCredential,
+    TestCredential,
+    DeleteCredential,
+    BrowseFiles,
+    PreviewFile,
+    DiscoverSymbols,
+    RunFileIngestion,
+    RunMassivePull,
+    ExecuteScheduleCommand,
+    ReconcileData,
+    SaveDataset,
+    BuildDataset,
 )
 
 
@@ -259,6 +299,58 @@ class EffectsRuntime:
                     action = DataImportCompleted(
                         self._client.import_data(effect.request, cancellation)
                     )
+                elif isinstance(effect, LoadCredentialStatus):
+                    action = CredentialCompleted(
+                        self._client.credential_status(effect.request, cancellation)
+                    )
+                elif isinstance(effect, SaveCredential):
+                    action = CredentialCompleted(
+                        self._client.save_credential(effect.request, cancellation)
+                    )
+                elif isinstance(effect, TestCredential):
+                    action = CredentialCompleted(
+                        self._client.test_credential(effect.request, cancellation)
+                    )
+                elif isinstance(effect, DeleteCredential):
+                    action = CredentialCompleted(
+                        self._client.delete_credential(effect.request, cancellation)
+                    )
+                elif isinstance(effect, BrowseFiles):
+                    action = FileBrowserCompleted(
+                        self._client.browse_files(effect.request, cancellation)
+                    )
+                elif isinstance(effect, PreviewFile):
+                    action = FilePreviewCompleted(
+                        self._client.preview_file(effect.request, cancellation)
+                    )
+                elif isinstance(effect, DiscoverSymbols):
+                    action = SymbolDiscoveryCompleted(
+                        self._client.discover_symbols(effect.request, cancellation)
+                    )
+                elif isinstance(effect, RunFileIngestion):
+                    action = IngestionCompleted(
+                        self._client.submit_file_ingestion(effect.plan, cancellation)
+                    )
+                elif isinstance(effect, RunMassivePull):
+                    action = IngestionCompleted(
+                        self._client.submit_massive_pull(effect.plan, cancellation)
+                    )
+                elif isinstance(effect, ExecuteScheduleCommand):
+                    action = ScheduleCommandCompleted(
+                        self._client.mutate_schedule(effect.command, cancellation)
+                    )
+                elif isinstance(effect, ReconcileData):
+                    action = ReconciliationCompleted(
+                        self._client.reconcile_data(effect.request, cancellation)
+                    )
+                elif isinstance(effect, SaveDataset):
+                    action = DatasetSaveCompleted(
+                        self._client.save_dataset(effect.request, cancellation)
+                    )
+                elif isinstance(effect, BuildDataset):
+                    action = DatasetBuildCompleted(
+                        self._client.build_dataset(effect.request, cancellation)
+                    )
                 elif isinstance(effect, EvaluateDraft):
                     action = DraftEvaluationCompleted(
                         self._client.evaluate_draft(
@@ -315,6 +407,9 @@ class EffectsRuntime:
                 ):
                     workspace, generation = self._phase7_identity(effect)
                     action = Phase7Cancelled(workspace, generation)
+                elif isinstance(effect, _INGESTION_EFFECT_TYPES):
+                    _, generation = self._phase7_identity(effect)
+                    action = IngestionOperationCancelled(effect.request_id, generation)
                 else:
                     action = ComparisonCancelled(effect.query.request_id, effect.query.generation)
             except Exception as error:
@@ -351,13 +446,28 @@ class EffectsRuntime:
                     action = Phase9Failed(
                         Phase9Workspace.MODELS, effect.command.generation, str(error)
                     )
+                elif isinstance(effect, _INGESTION_EFFECT_TYPES):
+                    _, generation = self._phase7_identity(effect)
+                    action = IngestionOperationFailed(effect.request_id, generation, str(error))
                 else:
                     workspace, generation = self._phase7_identity(effect)
                     action = Phase7Failed(workspace, generation, str(error))
             finally:
                 with self._lock:
                     self._cancellations.pop(effect.request_id, None)
-            while not cancellation.is_set():
+            publish_after_cancellation = isinstance(
+                action,
+                (
+                    ResearchCancelled,
+                    Phase7Cancelled,
+                    Phase8Cancelled,
+                    Phase9Cancelled,
+                    InferenceCancelled,
+                    ComparisonCancelled,
+                    IngestionOperationCancelled,
+                ),
+            )
+            while publish_after_cancellation or not cancellation.is_set():
                 try:
                     self._actions.put(action, timeout=0.01)
                     break
@@ -417,6 +527,14 @@ class EffectsRuntime:
             )
         if isinstance(effect, (CancelPhase7, CancelPhase8, CancelPhase9)):
             raise AssertionError("cancellation effects are handled synchronously")
+        if isinstance(effect, _INGESTION_EFFECT_TYPES):
+            _, generation = EffectsRuntime._phase7_identity(effect)
+            return IngestionOperationFailed(
+                effect.request_id,
+                generation,
+                "Data ingestion effect queue is busy",
+                busy=True,
+            )
         workspace, generation = EffectsRuntime._phase7_identity(effect)
         return Phase7Failed(workspace, generation, "Phase 7 effect queue is busy", busy=True)
 
@@ -430,6 +548,19 @@ class EffectsRuntime:
             return Phase7Workspace.EXPERIMENTS, effect.generation
         if isinstance(effect, (SaveDraft, SubmitExperiment)):
             return Phase7Workspace.EXPERIMENTS, effect.request.generation
+        if isinstance(effect, (LoadCredentialStatus, DeleteCredential)):
+            return Phase7Workspace.DATA, effect.request.generation
+        if isinstance(effect, (SaveCredential, TestCredential)):
+            return Phase7Workspace.DATA, effect.request.request.generation
+        if isinstance(
+            effect,
+            (BrowseFiles, PreviewFile, DiscoverSymbols, ReconcileData, SaveDataset, BuildDataset),
+        ):
+            return Phase7Workspace.DATA, effect.request.generation
+        if isinstance(effect, (RunFileIngestion, RunMassivePull)):
+            return Phase7Workspace.DATA, effect.plan.generation
+        if isinstance(effect, ExecuteScheduleCommand):
+            return Phase7Workspace.DATA, effect.command.generation
         return Phase7Workspace.EXPERIMENTS, 0
 
     @staticmethod

@@ -11,7 +11,7 @@ safe to replace with a real backend later.
 ## Ground verification
 
 1. Read `AGENTS.md` and
-   `specs/routing/phase-2.md`, then every required spec in the
+   `specs/history/routing/phase-2.md`, then every required spec in the
    route.
 2. Inspect state, actions, effects, client contracts, simulator, worker/queue
    ownership, and tests before selecting checks.

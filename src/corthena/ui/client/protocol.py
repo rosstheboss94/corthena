@@ -1,20 +1,41 @@
-"""Agent-facing contracts for snapshot loading."""
+"""Agent-facing contracts for backend-swappable UI operations."""
 
 from __future__ import annotations
 
 from typing import Protocol
 
 from corthena.ui.data_experiments.models import (
+    CredentialRequest,
+    CredentialResult,
+    CredentialSecretRequest,
     DraftEvaluation,
     DraftSaveRequest,
     DraftSaveResult,
     ExperimentDefinition,
     ExperimentDraft,
+    FileBrowserListing,
+    FileBrowserRequest,
+    FilePreview,
+    FilePreviewRequest,
     ImportRequest,
     ImportResult,
+    IngestionPlan,
+    IngestionResult,
     Phase7Request,
     Phase7Snapshot,
+    ReconciliationRequest,
+    ReconciliationResult,
+    ScheduleCommand,
+    ScheduleResult,
     SubmissionRequest,
+    SymbolDiscoveryRequest,
+    SymbolDiscoveryResult,
+)
+from corthena.ui.datasets.models import (
+    DatasetBuild,
+    DatasetBuildRequest,
+    DatasetSaveRequest,
+    DatasetSaveResult,
 )
 from corthena.ui.jobs_results.models import (
     ComparisonQuery,
@@ -69,6 +90,58 @@ class UIClientProtocol(Protocol):
     def import_data(
         self, request: ImportRequest, cancellation: CancellationSignalProtocol
     ) -> ImportResult: ...
+
+    def credential_status(
+        self, request: CredentialRequest, cancellation: CancellationSignalProtocol
+    ) -> CredentialResult: ...
+
+    def save_credential(
+        self, request: CredentialSecretRequest, cancellation: CancellationSignalProtocol
+    ) -> CredentialResult: ...
+
+    def test_credential(
+        self, request: CredentialSecretRequest, cancellation: CancellationSignalProtocol
+    ) -> CredentialResult: ...
+
+    def delete_credential(
+        self, request: CredentialRequest, cancellation: CancellationSignalProtocol
+    ) -> CredentialResult: ...
+
+    def preview_file(
+        self, request: FilePreviewRequest, cancellation: CancellationSignalProtocol
+    ) -> FilePreview: ...
+
+    def browse_files(
+        self, request: FileBrowserRequest, cancellation: CancellationSignalProtocol
+    ) -> FileBrowserListing: ...
+
+    def discover_symbols(
+        self, request: SymbolDiscoveryRequest, cancellation: CancellationSignalProtocol
+    ) -> SymbolDiscoveryResult: ...
+
+    def submit_file_ingestion(
+        self, plan: IngestionPlan, cancellation: CancellationSignalProtocol
+    ) -> IngestionResult: ...
+
+    def submit_massive_pull(
+        self, plan: IngestionPlan, cancellation: CancellationSignalProtocol
+    ) -> IngestionResult: ...
+
+    def mutate_schedule(
+        self, command: ScheduleCommand, cancellation: CancellationSignalProtocol
+    ) -> ScheduleResult: ...
+
+    def reconcile_data(
+        self, request: ReconciliationRequest, cancellation: CancellationSignalProtocol
+    ) -> ReconciliationResult: ...
+
+    def save_dataset(
+        self, request: DatasetSaveRequest, cancellation: CancellationSignalProtocol
+    ) -> DatasetSaveResult: ...
+
+    def build_dataset(
+        self, request: DatasetBuildRequest, cancellation: CancellationSignalProtocol
+    ) -> DatasetBuild: ...
 
     def evaluate_draft(
         self,

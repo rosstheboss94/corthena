@@ -1,6 +1,6 @@
 # ADR 0004: Raylib Dockable Interface
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-07-04
 
 ## Context
@@ -23,6 +23,6 @@ Dock geometry, focus, persistence, tables, and charts are first-party ui infrast
 
 ## Affected specifications
 
-- [UI foundation](../ui/foundation.md)
-- [UI workspaces](../ui/workspaces.md)
-- [UI visualization](../ui/visualization.md)
+- [UI foundation](../general/ui/README.md)
+- [UI workspaces](../general/ui/workspaces.md)
+- [UI visualization](../general/ui/visualization.md)

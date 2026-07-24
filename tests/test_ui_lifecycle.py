@@ -74,6 +74,12 @@ class FakeNative:
             raise RuntimeError("close failed")
 
 
+def test_launch_defaults_to_125_percent_and_accepts_documented_presets() -> None:
+    assert LaunchConfig().ui_scale_percent == 125
+    for preset in (100, 125, 150, 175, 200):
+        assert LaunchConfig(ui_scale_percent=preset).ui_scale_percent == preset
+
+
 def test_bounded_launch_renders_and_cleans_up() -> None:
     native = FakeNative()
     evidence = launch(LaunchConfig(hidden=True, max_frames=2), adapter_factory=lambda: native)

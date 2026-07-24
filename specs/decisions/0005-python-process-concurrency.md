@@ -48,10 +48,10 @@ bindings require Windows build validation and narrow typed boundaries.
 
 ## Affected specifications
 
-- [System architecture](../system-architecture.md)
-- [Training runtime](../training-runtime.md)
-- [Models](../models.md)
-- [API](../api.md)
-- [Data and features](../data-and-features.md)
-- [UI foundation](../ui/foundation.md)
-- [Quality](../quality.md)
+- [System architecture](../general/system-architecture.md)
+- [Training runtime](../pages/jobs/runtime.md)
+- [Models](../pages/models/README.md)
+- [API](../general/api.md)
+- [Data and features](../pages/data/ingestion.md)
+- [UI foundation](../general/ui/README.md)
+- [Quality](../general/quality/README.md)

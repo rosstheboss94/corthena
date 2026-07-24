@@ -8,10 +8,13 @@ version = "0.0.0"
 description = "Windows-first Corthena Python/Cython migration"
 requires-python = ">=3.14,<3.15"
 dependencies = [
+    "exchange-calendars==4.13.2",
     "fastapi==0.139.0",
     "httpx==0.28.1",
     "numpy==2.5.1",
+    "platformdirs==4.10.0",
     "pyarrow==23.0.1",
+    "pydantic==2.13.4",
     "raylib==6.0.1.0",
     "uvicorn==0.51.0",
     "websockets==16.1",
@@ -30,9 +33,11 @@ dev = [
 
 [project.scripts]
 corthena-phase0-gate = "corthena.compatibility.gate:main"
+corthena-coordinator = "corthena.coordinator.__main__:main"
 corthena-workstation = "corthena.workstation.__main__:main"
 
 [tool.setuptools.package-data]
+"corthena.persistence.migrations" = ["*.sql"]
 "corthena.ui.assets" = [
     "fonts/*.ttf",
     "icons/*.png",

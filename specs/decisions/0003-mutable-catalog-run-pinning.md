@@ -1,6 +1,6 @@
 # ADR 0003: Mutable Catalog with Run Pinning
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-07-04
 
 ## Context
@@ -23,5 +23,5 @@ Paused jobs resume exactly. Completed results remain auditable, but exact reprod
 
 ## Affected specifications
 
-- [Data and features](../data-and-features.md)
-- [System architecture](../system-architecture.md)
+- [Data and features](../pages/data/ingestion.md)
+- [System architecture](../general/system-architecture.md)

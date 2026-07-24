@@ -1,0 +1,1 @@
+"""Typed coordinator event infrastructure."""

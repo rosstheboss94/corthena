@@ -11,9 +11,10 @@ thread.
 
 ## Ground the change
 
-1. Read `AGENTS.md`, `specs/contract.md`,
-   `specs/design-pattern.md`, and
-   `specs/routing/phase-8.md` before planning or editing.
+1. Read `AGENTS.md`, `specs/general/contract.md`,
+   `specs/general/design-pattern.md`, and
+   `specs/pages/jobs/README.md`, `specs/pages/results/README.md`, and the owning
+   page specifications before planning or editing.
 2. Read the route-required Jobs, Results, async-effects, training-runtime,
    evaluation, common-quality, and concurrency-quality specifications. Read
    `api.md` only for public/process contracts and `ui/visualization.md` for

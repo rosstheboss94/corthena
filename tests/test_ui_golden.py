@@ -28,7 +28,14 @@ def test_phase3_python_capture_matches_manifest_owned_go_png(tmp_path: Path) -> 
         Path(__file__).parent / "goldens" / "phase1to4-golden" / "phase3_application_shell.png"
     )
     capture = tmp_path / "phase3_application_shell.png"
-    evidence = launch(LaunchConfig(hidden=True, max_frames=30, capture_path=capture))
+    evidence = launch(
+        LaunchConfig(
+            hidden=True,
+            max_frames=30,
+            capture_path=capture,
+            ui_scale_percent=100,
+        )
+    )
     result = compare_pngs(baseline, capture, channel_tolerance=3, max_different_ratio=0.002)
     assert evidence.frames_rendered == 30
     assert evidence.max_actions_drained <= 4
@@ -38,7 +45,14 @@ def test_phase3_python_capture_matches_manifest_owned_go_png(tmp_path: Path) -> 
 def test_phase4_python_capture_matches_manifest_owned_go_png(tmp_path: Path) -> None:
     baseline = Path(__file__).parent / "goldens" / "phase1to4-golden" / "phase4_dockable_data.png"
     capture = tmp_path / "phase4_dockable_data.png"
-    evidence = launch(LaunchConfig(hidden=True, max_frames=30, capture_path=capture))
+    evidence = launch(
+        LaunchConfig(
+            hidden=True,
+            max_frames=30,
+            capture_path=capture,
+            ui_scale_percent=100,
+        )
+    )
     result = compare_pngs(baseline, capture, channel_tolerance=3, max_different_ratio=0.002)
     assert evidence.frames_rendered == 30
     assert evidence.final_state.ui_scale_percent == 100

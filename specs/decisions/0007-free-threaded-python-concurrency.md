@@ -1,7 +1,7 @@
 # ADR 0007: Free-Threaded Python Concurrency
 
-**Status:** Superseded by [ADR 0008](0008-regular-cpython-concurrency.md)  
-**Date:** 2026-07-12  
+**Status:** Superseded by [ADR 0008](0008-regular-cpython-concurrency.md)
+**Date:** 2026-07-12
 **Supersedes:** [ADR 0005](0005-python-process-concurrency.md)
 
 ## Context
@@ -44,9 +44,9 @@ visible in health and compatibility evidence.
 
 ## Affected specifications
 
-- [Technology stack](../technology-stack.md)
-- [System architecture](../system-architecture.md)
-- [Python migration](../python-migration.md)
-- [Training runtime](../training-runtime.md)
-- [API](../api.md)
-- [Quality](../quality.md)
+- [Technology stack](../general/technology-stack.md)
+- [System architecture](../general/system-architecture.md)
+- [Python migration](../history/migration/python-migration.md)
+- [Training runtime](../pages/jobs/runtime.md)
+- [API](../general/api.md)
+- [Quality](../general/quality/README.md)

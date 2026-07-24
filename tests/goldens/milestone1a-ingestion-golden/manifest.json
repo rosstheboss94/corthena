@@ -1,0 +1,1031 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "api_tokens_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "api_tokens"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "api_tokens_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "api_tokens"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "api_tokens_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "api_tokens"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "api_tokens_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "api_tokens"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "api_tokens_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "api_tokens"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "api_tokens_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "api_tokens"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_browser_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_browser"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_browser_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_browser"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_browser_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_browser"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_browser_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_browser"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_browser_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_browser"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_browser_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_browser"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_mapping_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_mapping"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_mapping_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_mapping"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_mapping_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_mapping"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_mapping_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_mapping"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_mapping_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_mapping"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "file_mapping_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "file_mapping"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "massive_pull_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "massive_pull"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "massive_pull_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "massive_pull"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "massive_pull_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "massive_pull"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "massive_pull_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "massive_pull"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "massive_pull_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "massive_pull"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "massive_pull_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "massive_pull"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "schedule_editing_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "schedule_editing"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "schedule_editing_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "schedule_editing"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "schedule_editing_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "schedule_editing"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "schedule_editing_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "schedule_editing"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "schedule_editing_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "schedule_editing"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "schedule_editing_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "schedule_editing"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "active_progress_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "active_progress"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "active_progress_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "active_progress"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "active_progress_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "active_progress"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "active_progress_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "active_progress"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "active_progress_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "active_progress"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "active_progress_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "active_progress"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "validation_error_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "validation_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "validation_error_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "validation_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "validation_error_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "validation_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "validation_error_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "validation_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "validation_error_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "validation_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "validation_error_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "validation_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "authentication_error_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "authentication_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "authentication_error_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "authentication_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "authentication_error_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "authentication_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "authentication_error_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "authentication_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "authentication_error_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "authentication_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "authentication_error_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "authentication_error"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "recovered_1280x720_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "recovered"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "recovered_1280x720_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "recovered"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "recovered_1280x720_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1280,
+          "height": 720,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "recovered"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "recovered_1920x1080_100.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 100,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "recovered"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "recovered_1920x1080_150.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 150,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "recovered"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    },
+    {
+      "workspace": "data",
+      "golden": {
+        "file": "recovered_1920x1080_200.png",
+        "metadata": {
+          "baseline_version": 1,
+          "seed": 107,
+          "width": 1920,
+          "height": 1080,
+          "scale_percent": 200,
+          "font_fingerprint": "sha256:94cdd4c45510e01cffb7016bb3854b5d51a363011bfa6e1634128cc9b4ffcfbc",
+          "scenario_clock": "2026-07-10T12:00:00Z",
+          "backend": "windows-raylib-opengl-3.3-amd-rx5700xt",
+          "scenario": "recovered"
+        },
+        "channel_tolerance": 3,
+        "max_different_ratio": 0.002
+      }
+    }
+  ]
+}

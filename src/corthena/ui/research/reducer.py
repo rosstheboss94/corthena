@@ -125,7 +125,7 @@ def reduce_research(
             if not feature or feature.strip() != feature:
                 raise ValueError("Research feature is invalid")
             group = _required_group(state, group_id)
-            query = _next_query(group, selected_features=(feature,), cursor="")
+            query = _next_query(group, visible_features=(feature,), cursor="")
             return reduce_research(state, RequestResearch(query))
         case SetResearchScenario(group_id=group_id, scenario=scenario):
             group = _required_group(state, group_id)

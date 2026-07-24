@@ -7,15 +7,15 @@ owning specification rather than duplicating it here.
 
 - Route and ownership: `AGENTS.md`,
   `specs/README.md`, and relevant
-  `specs/routing/phase-*.md`.
-- Migration and approved stack: `specs/python-migration.md`,
-  `specs/migration-baseline.md`, and
-  `specs/technology-stack.md`.
-- Quality and verification: `specs/quality.md` plus applicable
-  `specs/quality-*.md` documents.
-- Native UI: `specs/ui/foundation.md`; use
-  `specs/ui/workspaces.md` or
-  `specs/ui/visualization.md` when those behaviors are involved.
+  `specs/history/routing/phase-*.md` as retained evidence.
+- Migration and approved stack: `specs/history/migration/python-migration.md`,
+  `specs/history/migration/migration-baseline.md`, and
+  `specs/general/technology-stack.md`.
+- Quality and verification: `specs/general/quality/README.md` plus applicable
+  `specs/general/quality/*.md` documents.
+- Native UI: `specs/general/ui/README.md`; use
+  `specs/general/ui/workspaces.md` or
+  `specs/general/ui/visualization.md` when those behaviors are involved.
 
 ## Non-negotiables
 

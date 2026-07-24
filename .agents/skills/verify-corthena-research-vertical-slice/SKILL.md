@@ -11,10 +11,10 @@ boundary.
 
 ## Ground verification
 
-1. Read `AGENTS.md`, `specs/roadmap.md`,
-   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
-   `specs/ui/visualization.md`, `specs/data-and-features.md`,
-   `specs/api.md`, and `specs/quality.md`.
+1. Read `AGENTS.md`, `specs/general/roadmap.md`,
+   `specs/general/ui/workspaces.md`, `specs/general/ui/README.md`,
+   `specs/general/ui/visualization.md`, `specs/pages/data/ingestion.md`,
+   `specs/general/api.md`, and `specs/general/quality/README.md`.
 2. Inspect Research app state, actions/effects, client types, simulator data,
    panel renderers, Phase 5 kernels, existing tests, benchmarks, and golden
    harness before selecting checks. Preserve unrelated changes.

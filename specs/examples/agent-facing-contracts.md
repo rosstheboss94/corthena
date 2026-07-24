@@ -3,7 +3,7 @@
 **Status:** Non-authoritative examples
 **Owner:** Architecture
 **Last updated:** 2026-07-16
-**Related:** [Agent-facing contract specification](../contract.md)
+**Related:** [Agent-facing contract specification](../general/contract.md)
 
 This document illustrates the rules in `contract.md`. It is not required
 context for ordinary tasks and does not add normative requirements.

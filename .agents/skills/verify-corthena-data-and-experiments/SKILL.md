@@ -11,9 +11,9 @@ future backend replacement.
 
 ## Ground verification
 
-1. Read `AGENTS.md`, `specs/routing/phase-7.md`,
-   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
-   `specs/data-and-features.md`, `specs/quality.md`, and `specs/api.md`.
+1. Read `AGENTS.md`, `specs/history/routing/phase-7.md`,
+   `specs/general/ui/workspaces.md`, `specs/general/ui/README.md`,
+   `specs/pages/data/ingestion.md`, `specs/general/quality/README.md`, and `specs/general/api.md`.
 2. Inspect Data/Experiments state, actions/effects, client types, simulator,
    renderers, layout/link groups, persistence workers, virtual tables, and
    existing tests before selecting checks. Preserve unrelated changes.

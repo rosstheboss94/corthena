@@ -6,7 +6,8 @@ typed Python/Cython modular monolith.
 The coordinator, worker, and research CLI entry points are not yet implemented.
 The simulator-backed workstation through Phase 9 and the Phase 0 compatibility
 gate are runnable. See
-[`specs/roadmap.md`](specs/roadmap.md) for implementation status.
+[`specs/general/roadmap.md`](specs/general/roadmap.md) and the applicable page
+roadmap for implementation status.
 
 ## Requirements
 
@@ -135,7 +136,8 @@ uv lock --check
 ```
 
 Do not hand-edit `uv.lock`. New direct dependencies must first satisfy the
-admission rules in [`specs/technology-stack.md`](specs/technology-stack.md).
+admission rules in
+[`specs/general/technology-stack.md`](specs/general/technology-stack.md).
 
 ## Recreate the environment
 
@@ -183,9 +185,9 @@ migration deviations are recorded under `specs/missing/`.
 ## More documentation
 
 - [`specs/README.md`](specs/README.md) — specification index
-- [`specs/roadmap.md`](specs/roadmap.md) — delivery status and sequencing
-- [`specs/python-migration.md`](specs/python-migration.md) — completed cutover record and compatibility policy
-- [`specs/technology-stack.md`](specs/technology-stack.md) — approved stack
-- [`specs/quality.md`](specs/quality.md) — quality-gate index
+- [`specs/general/roadmap.md`](specs/general/roadmap.md) — cross-page sequencing
+- [`specs/pages/data/roadmap.md`](specs/pages/data/roadmap.md) — Data milestones
+- [`specs/general/technology-stack.md`](specs/general/technology-stack.md) — approved stack
+- [`specs/general/quality/README.md`](specs/general/quality/README.md) — quality-gate index
 - [`docs/phase0-cp314-compatibility.md`](docs/phase0-cp314-compatibility.md) —
   successful regular-CPython compatibility evidence

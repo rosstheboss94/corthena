@@ -8,7 +8,7 @@ description: Verify Corthena Phase 3's deterministic application shell, hidden-l
 ## Ground the gate
 
 1. Read `AGENTS.md` and every required document in
-   `specs/routing/phase-3.md`.
+   `specs/history/routing/phase-3.md`.
 2. Inspect the complete Phase 3 implementation, focused tests, and named
    manifest entry. Treat missing or skipped evidence as a failure, not a pass.
 3. Use only configured project commands. Preserve failure artifacts and never

@@ -51,10 +51,10 @@ library internals remain behind typed adapters.
 
 ## Affected specifications
 
-- [Models](../models.md)
-- [Model artifacts](../model-artifacts.md)
-- [Training runtime](../training-runtime.md)
-- [Evaluation and inference](../evaluation-and-inference.md)
-- [System architecture](../system-architecture.md)
-- [Technology stack](../technology-stack.md)
-- [Quality](../quality.md)
+- [Models](../pages/models/README.md)
+- [Model artifacts](../pages/models/artifacts-and-registry.md)
+- [Training runtime](../pages/jobs/runtime.md)
+- [Evaluation and inference](../pages/results/README.md)
+- [System architecture](../general/system-architecture.md)
+- [Technology stack](../general/technology-stack.md)
+- [Quality](../general/quality/README.md)

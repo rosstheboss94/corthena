@@ -11,13 +11,13 @@ or export work on the render thread.
 
 ## Ground the change
 
-1. Read `AGENTS.md`, `specs/routing/phase-9.md`,
-   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
-   `specs/models.md`, `specs/evaluation-and-inference.md`, and
-   `specs/quality.md`.
-2. Read `specs/api.md` for client or DTO changes,
-   `specs/ui/visualization.md` for chart, tree, or virtual-table changes,
-   and `specs/technology-stack.md` for dependency or tooling changes.
+1. Read `AGENTS.md`, `specs/pages/models/README.md`, `specs/pages/inference/README.md`,
+   `specs/general/ui/workspaces.md`, `specs/general/ui/README.md`,
+   `specs/pages/models/README.md`, `specs/pages/results/README.md`, and
+   `specs/general/quality/README.md`.
+2. Read `specs/general/api.md` for client or DTO changes,
+   `specs/general/ui/visualization.md` for chart, tree, or virtual-table changes,
+   and `specs/general/technology-stack.md` for dependency or tooling changes.
 3. Inspect the existing app state, actions/effects, `UIClient`,
    `DemoCoordinator`, Phase 8 reconciliation patterns, layouts, charts, tables,
    and golden harness. Preserve unrelated workspace changes.
@@ -34,7 +34,7 @@ or export work on the render thread.
   they never import or branch on simulator details.
 - Clone slices at publication boundaries, preserve stable ordering, reject stale
   generations, and make mutating command retries idempotent by command ID.
-- Update `specs/api.md` only for a real public or process contract. Internal
+- Update `specs/general/api.md` only for a real public or process contract. Internal
   Phase 9 demo methods do not define future coordinator endpoints.
 
 ## Build the Models workspace
@@ -92,6 +92,6 @@ or export work on the render thread.
   replay, benchmark, and golden tests.
 - Hand off to `$verify-corthena-models-and-inference`; add visualization
   verification for chart, table, tree, cache, or render-buffer changes.
-- Apply the focused quality route in `specs/routing/phase-9.md`; use
+- Apply the focused quality route in `specs/general/quality/README.md`; use
   `$python-windows-compat-gate` only for dependency, native, toolchain, or shell
   changes. Update living specifications for behavior or contract changes.

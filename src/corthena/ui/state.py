@@ -125,6 +125,7 @@ def _default_workspace_layouts() -> tuple[tuple[Workspace, WorkspaceLayout], ...
                     ("import-queue", "Import Queue"),
                     ("dataset", "Dataset"),
                     ("import-logs", "Import Logs"),
+                    ("schedules", "Schedules"),
                 )
             )
             values.append(
@@ -370,7 +371,7 @@ class AppState:
     snapshot: Snapshot | None = None
     error: str | None = None
     workspace: Workspace = Workspace.DATA
-    ui_scale_percent: int = 100
+    ui_scale_percent: int = 125
     command_palette_open: bool = False
     settings_open: bool = False
     dataset_context_revision: int = 0

@@ -8,7 +8,7 @@ description: Verify Corthena Phase 4 docking, reusable controls, preferences, re
 ## Establish the contract
 
 1. Read `AGENTS.md` and every required document in
-   `specs/routing/phase-4.md`.
+   `specs/history/routing/phase-4.md`.
 2. Inspect the complete target diff and the matching legacy Go docking,
    controls, layouts, preferences, effects, and native dock-shell references.
 3. Record every input and tolerance owned by the Phase 1-4 manifest entry for

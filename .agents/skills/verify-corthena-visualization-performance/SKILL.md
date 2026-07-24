@@ -8,7 +8,7 @@ description: Verify Corthena Phase 5 charts and tables for numerical correctness
 ## Establish the contract
 
 1. Read `AGENTS.md` and every required document in
-   `specs/routing/phase-5.md`.
+   `specs/history/routing/phase-5.md`.
 2. Inspect the complete target diff and matching legacy Go chart, table,
    golden, effects, state, and native visualization references.
 3. Record every input and tolerance in the dedicated `phase5-golden` manifest.

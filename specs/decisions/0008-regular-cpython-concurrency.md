@@ -1,7 +1,7 @@
 # ADR 0008: Regular CPython with Measured Cython Acceleration
 
-**Status:** Accepted  
-**Date:** 2026-07-12  
+**Status:** Accepted
+**Date:** 2026-07-12
 **Supersedes:** [ADR 0007](0007-free-threaded-python-concurrency.md)
 
 ## Context
@@ -49,10 +49,10 @@ superseded evidence.
 
 ## Affected specifications
 
-- [Concurrency and parallelism](../concurrency-and-parallelism.md)
-- [Technology stack](../technology-stack.md)
-- [System architecture](../system-architecture.md)
-- [Python migration](../python-migration.md)
-- [Training runtime](../training-runtime.md)
-- [API](../api.md)
-- [Quality](../quality.md)
+- [Concurrency and parallelism](../general/concurrency-and-parallelism.md)
+- [Technology stack](../general/technology-stack.md)
+- [System architecture](../general/system-architecture.md)
+- [Python migration](../history/migration/python-migration.md)
+- [Training runtime](../pages/jobs/runtime.md)
+- [API](../general/api.md)
+- [Quality](../general/quality/README.md)

@@ -11,10 +11,10 @@ thread.
 
 ## Ground the change
 
-1. Read `AGENTS.md`, `specs/routing/phase-7.md`,
-   `specs/ui/workspaces.md`, `specs/ui/foundation.md`,
-   `specs/data-and-features.md`, and `specs/quality.md`.
-2. Read `specs/api.md` for client or DTO changes, `specs/technology-stack.md`
+1. Read `AGENTS.md`, `specs/pages/data/README.md`, `specs/pages/experiments/README.md`,
+   `specs/general/ui/workspaces.md`, `specs/general/ui/README.md`,
+   `specs/pages/data/ingestion.md`, and `specs/general/quality/README.md`.
+2. Read `specs/general/api.md` for client or DTO changes, `specs/general/technology-stack.md`
    for dependency/tooling changes, and `specs/README.md` when ownership spans
    Data, Experiments, and ui state.
 3. Inspect the existing app state/actions/effects, `UIClient`,
@@ -34,7 +34,7 @@ thread.
 - Reject invalid source/range combinations, duplicate IDs, invalid intervals,
   invalid split/model/feature configurations, stale draft revisions, and
   mutable resubmission attempts at their owning boundaries.
-- Update `specs/api.md` only when a public/process contract changes; internal
+- Update `specs/general/api.md` only when a public/process contract changes; internal
   demo contracts do not define future coordinator endpoints.
 
 ## Build deterministic Data behavior
@@ -50,7 +50,7 @@ thread.
   failure or cancellation.
 - Keep timestamp normalization, `(symbol, timestamp)` ordering, OHLC checks,
   finite prices, nonnegative volume, and correction-range rules consistent
-  with `specs/data-and-features.md`. Do not simulate future data to satisfy a
+  with `specs/pages/data/ingestion.md`. Do not simulate future data to satisfy a
   visible range.
 - Run preparation, filtering, sorting, validation, delays, and autosave I/O
   on owned cancellable workers. Reuse the existing bounded effect runtime,

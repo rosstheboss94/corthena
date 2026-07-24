@@ -39,6 +39,10 @@ from corthena.ui.state import (
 )
 
 
+def test_default_ui_scale_is_125_percent() -> None:
+    assert AppState().ui_scale_percent == 125
+
+
 def snapshot(request_id: str = "request-1", generation: int = 0) -> Snapshot:
     return Snapshot(
         request_id,

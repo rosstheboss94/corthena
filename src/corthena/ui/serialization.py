@@ -22,6 +22,7 @@ from corthena.ui.data_experiments.models import (
     Phase7Scenario,
     Phase7Workspace,
 )
+from corthena.ui.datasets.models import DatasetBinding
 from corthena.ui.docking import DockPosition
 from corthena.ui.jobs_results.actions import (
     CancelPhase8,
@@ -184,7 +185,7 @@ def _encode_research_query(query: ResearchQuery) -> dict[str, JsonValue]:
         "interval": query.interval.value,
         "start": query.time_range.start.isoformat(),
         "end": query.time_range.end.isoformat(),
-        "selected_features": list(query.selected_features),
+        "visible_features": list(query.visible_features),
         "target_kind": query.target.kind,
         "target_horizon_bars": query.target.horizon_bars,
         "target_log_return": query.target.log_return,
@@ -194,6 +195,12 @@ def _encode_research_query(query: ResearchQuery) -> dict[str, JsonValue]:
         "sort": query.sort.value,
         "filter": query.filter,
         "scenario": query.scenario.value,
+        "dataset_version": query.dataset_binding.dataset_version,
+        "source_snapshots": list(query.dataset_binding.source_snapshots),
+        "recipe_fingerprint": query.dataset_binding.recipe_fingerprint,
+        "build_fingerprint": query.dataset_binding.build_fingerprint,
+        "feature_fingerprints": list(query.dataset_binding.feature_fingerprints),
+        "feature_columns": list(query.dataset_binding.feature_columns),
     }
 
 
@@ -207,7 +214,7 @@ _RESEARCH_QUERY_FIELDS = frozenset(
         "interval",
         "start",
         "end",
-        "selected_features",
+        "visible_features",
         "target_kind",
         "target_horizon_bars",
         "target_log_return",
@@ -217,6 +224,12 @@ _RESEARCH_QUERY_FIELDS = frozenset(
         "sort",
         "filter",
         "scenario",
+        "dataset_version",
+        "source_snapshots",
+        "recipe_fingerprint",
+        "build_fingerprint",
+        "feature_fingerprints",
+        "feature_columns",
     }
 )
 
@@ -240,14 +253,22 @@ def _decode_research_query(value: object) -> ResearchQuery:
         correlation_id=_string(record, "correlation_id"),
         group_id=_string(record, "group_id"),
         generation=_integer(record, "generation"),
-        dataset_id=_string(record, "dataset_id"),
+        dataset_binding=DatasetBinding(
+            _string(record, "dataset_id"),
+            _integer(record, "dataset_version"),
+            _string_tuple(record, "source_snapshots"),
+            _string(record, "recipe_fingerprint"),
+            _string(record, "build_fingerprint"),
+            _string_tuple(record, "feature_fingerprints"),
+            _string_tuple(record, "feature_columns"),
+        ),
         symbols=_string_tuple(record, "symbols"),
         interval=interval,
         time_range=TimeRange(
             datetime.fromisoformat(_string(record, "start")),
             datetime.fromisoformat(_string(record, "end")),
         ),
-        selected_features=_string_tuple(record, "selected_features"),
+        visible_features=_string_tuple(record, "visible_features"),
         target=TargetSpec(
             _string(record, "target_kind"),
             _integer(record, "target_horizon_bars"),

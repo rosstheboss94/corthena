@@ -8,7 +8,7 @@ description: Build Corthena Phase 5 first-party chart and table infrastructure, 
 ## Ground the implementation
 
 1. Read `AGENTS.md` and every required document in
-   `specs/routing/phase-5.md` before editing.
+   `specs/general/ui/visualization.md` and `specs/general/quality/visualization.md` before editing.
 2. Treat the living specifications, legacy Go chart/table implementation, and
    manifest-owned `phase5-golden` matrix as canonical. Update an owning
    specification first when behavior or a public contract changes.

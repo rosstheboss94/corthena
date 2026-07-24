@@ -1,6 +1,6 @@
 # ADR 0001: Local Process Architecture
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2026-07-04
 
 ## Context
@@ -23,6 +23,6 @@ The UI remains responsive, worker failures are contained, and CLI/API surfaces s
 
 ## Affected specifications
 
-- [System architecture](../system-architecture.md)
-- [Training runtime](../training-runtime.md)
-- [API](../api.md)
+- [System architecture](../general/system-architecture.md)
+- [Training runtime](../pages/jobs/runtime.md)
+- [API](../general/api.md)

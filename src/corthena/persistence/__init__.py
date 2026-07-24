@@ -1,0 +1,1 @@
+"""Typed persistence adapters."""

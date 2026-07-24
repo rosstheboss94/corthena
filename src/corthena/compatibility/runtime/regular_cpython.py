@@ -75,6 +75,8 @@ class RegularCpythonRuntimeProbe:
             ("pyarrow", "pyarrow"),
             ("cython", "Cython"),
             ("pydantic-core", "pydantic_core"),
+            ("platformdirs", "platformdirs"),
+            ("exchange-calendars", "exchange_calendars"),
             ("raylib", "pyray"),
             ("corthena", "corthena.cython_ext._compat"),
         )

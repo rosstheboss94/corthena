@@ -11,9 +11,9 @@ Treat missing evidence as a verification failure, not permission to infer pass.
 ## Establish the contract
 
 1. Read `AGENTS.md`,
-   `specs/design-pattern.md`,
-   `specs/ui/raylib-visual-system.md`, the owning
-   subsystem specification, and `specs/quality.md`.
+   `specs/general/design-pattern.md`,
+   `specs/general/ui/visual-system.md`, the owning
+   subsystem specification, and `specs/general/quality/README.md`.
 2. Locate the applicable canonical manifest and PNG family under
    `tests/goldens/`. Record its viewport, scale, scenario,
    seed, clock, fixture/state, layout, asset fingerprint, backend, build

@@ -12,12 +12,12 @@ boundaries.
 ## Ground the change
 
 1. Read `AGENTS.md`.
-2. Read the requested phase in `specs/roadmap.md`,
-   `specs/technology-stack.md`, `specs/quality.md`, and
-   `specs/ui/foundation.md`.
-3. Read `specs/ui/workspaces.md` or
-   `specs/ui/visualization.md` only when the task reaches those
-   behaviors. Read `specs/api.md` for public client or process-boundary work.
+2. Read the requested phase in `specs/general/roadmap.md`,
+   `specs/general/technology-stack.md`, `specs/general/quality/README.md`, and
+   `specs/general/ui/README.md`.
+3. Read `specs/general/ui/workspaces.md` or
+   `specs/general/ui/visualization.md` only when the task reaches those
+   behaviors. Read `specs/general/api.md` for public client or process-boundary work.
 4. Inspect `screenshots/` only for an explicitly visual-design task.
 5. Inspect the current workspace and preserve unrelated changes.
 6. Treat living specifications as canonical and report conflicts rather than
@@ -48,7 +48,7 @@ boundaries.
 
 ## Build the Phase 1 workstation
 
-- Treat `specs/routing/phase-1.md` as the Phase 1 reading and evidence map.
+- Treat `specs/history/routing/phase-1.md` as the Phase 1 reading and evidence map.
 - Add one named workstation project script whose callable delegates immediately
   to owned ui startup code. Do not reuse the Phase 0 compatibility-gate
   command as the workstation entry point.

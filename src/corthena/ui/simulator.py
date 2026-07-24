@@ -10,16 +10,37 @@ from corthena.ui.client.errors import RequestCancelledError
 from corthena.ui.client.protocol import CancellationSignalProtocol
 from corthena.ui.data_experiments.deterministic import DataExperimentsDemo
 from corthena.ui.data_experiments.models import (
+    CredentialRequest,
+    CredentialResult,
+    CredentialSecretRequest,
     DraftEvaluation,
     DraftSaveRequest,
     DraftSaveResult,
     ExperimentDefinition,
     ExperimentDraft,
+    FileBrowserListing,
+    FileBrowserRequest,
+    FilePreview,
+    FilePreviewRequest,
     ImportRequest,
     ImportResult,
+    IngestionPlan,
+    IngestionResult,
     Phase7Request,
     Phase7Snapshot,
+    ReconciliationRequest,
+    ReconciliationResult,
+    ScheduleCommand,
+    ScheduleResult,
     SubmissionRequest,
+    SymbolDiscoveryRequest,
+    SymbolDiscoveryResult,
+)
+from corthena.ui.datasets.models import (
+    DatasetBuild,
+    DatasetBuildRequest,
+    DatasetSaveRequest,
+    DatasetSaveResult,
 )
 from corthena.ui.jobs_results.deterministic import JobsResultsDemo
 from corthena.ui.jobs_results.models import (
@@ -123,6 +144,84 @@ class DeterministicSimulator:
             raise RequestCancelledError(request.request_id)
         return self._phase7.run_import(request, cancellation)
 
+    def credential_status(
+        self, request: CredentialRequest, cancellation: CancellationSignalProtocol
+    ) -> CredentialResult:
+        self._delay(request.request_id, cancellation)
+        return self._phase7.credential_status(request, cancellation)
+
+    def save_credential(
+        self, request: CredentialSecretRequest, cancellation: CancellationSignalProtocol
+    ) -> CredentialResult:
+        self._delay(request.request.request_id, cancellation)
+        return self._phase7.save_credential(request, cancellation)
+
+    def test_credential(
+        self, request: CredentialSecretRequest, cancellation: CancellationSignalProtocol
+    ) -> CredentialResult:
+        self._delay(request.request.request_id, cancellation)
+        return self._phase7.test_credential(request, cancellation)
+
+    def delete_credential(
+        self, request: CredentialRequest, cancellation: CancellationSignalProtocol
+    ) -> CredentialResult:
+        self._delay(request.request_id, cancellation)
+        return self._phase7.delete_credential(request, cancellation)
+
+    def preview_file(
+        self, request: FilePreviewRequest, cancellation: CancellationSignalProtocol
+    ) -> FilePreview:
+        self._delay(request.request_id, cancellation)
+        return self._phase7.preview_file(request, cancellation)
+
+    def browse_files(
+        self, request: FileBrowserRequest, cancellation: CancellationSignalProtocol
+    ) -> FileBrowserListing:
+        self._delay(request.request_id, cancellation)
+        return self._phase7.browse_files(request, cancellation)
+
+    def discover_symbols(
+        self, request: SymbolDiscoveryRequest, cancellation: CancellationSignalProtocol
+    ) -> SymbolDiscoveryResult:
+        self._delay(request.request_id, cancellation)
+        return self._phase7.discover_symbols(request, cancellation)
+
+    def submit_file_ingestion(
+        self, plan: IngestionPlan, cancellation: CancellationSignalProtocol
+    ) -> IngestionResult:
+        self._delay(plan.request_id, cancellation)
+        return self._phase7.submit_ingestion(plan, cancellation, provider=False)
+
+    def submit_massive_pull(
+        self, plan: IngestionPlan, cancellation: CancellationSignalProtocol
+    ) -> IngestionResult:
+        self._delay(plan.request_id, cancellation)
+        return self._phase7.submit_ingestion(plan, cancellation, provider=True)
+
+    def mutate_schedule(
+        self, command: ScheduleCommand, cancellation: CancellationSignalProtocol
+    ) -> ScheduleResult:
+        self._delay(command.request_id, cancellation)
+        return self._phase7.mutate_schedule(command, cancellation)
+
+    def reconcile_data(
+        self, request: ReconciliationRequest, cancellation: CancellationSignalProtocol
+    ) -> ReconciliationResult:
+        self._delay(request.request_id, cancellation)
+        return self._phase7.reconcile(request, cancellation)
+
+    def save_dataset(
+        self, request: DatasetSaveRequest, cancellation: CancellationSignalProtocol
+    ) -> DatasetSaveResult:
+        self._delay(request.request_id, cancellation)
+        return self._phase7.save_dataset(request, cancellation)
+
+    def build_dataset(
+        self, request: DatasetBuildRequest, cancellation: CancellationSignalProtocol
+    ) -> DatasetBuild:
+        self._delay(request.request_id, cancellation)
+        return self._phase7.build_dataset(request, cancellation)
+
     def evaluate_draft(
         self,
         request_id: str,
@@ -201,6 +300,10 @@ class DeterministicSimulator:
         payload = f"{self._config.seed}\0{request_id}\0{generation}\0{symbol}".encode()
         digest = hashlib.sha256(payload).digest()
         return 10_000_000 + int.from_bytes(digest[:8], "big") % 990_000_001
+
+    def _delay(self, request_id: str, cancellation: CancellationSignalProtocol) -> None:
+        if cancellation.wait(self._config.delay_seconds) or cancellation.is_set():
+            raise RequestCancelledError(request_id)
 
 
 __all__ = ["DeterministicSimulator", "SimulatorConfig"]

@@ -9,16 +9,37 @@ import pytest
 
 from corthena.ui.client import CancellationSignal, RequestCancelledError
 from corthena.ui.data_experiments.models import (
+    CredentialRequest,
+    CredentialResult,
+    CredentialSecretRequest,
     DraftEvaluation,
     DraftSaveRequest,
     DraftSaveResult,
     ExperimentDefinition,
     ExperimentDraft,
+    FileBrowserListing,
+    FileBrowserRequest,
+    FilePreview,
+    FilePreviewRequest,
     ImportRequest,
     ImportResult,
+    IngestionPlan,
+    IngestionResult,
     Phase7Request,
     Phase7Snapshot,
+    ReconciliationRequest,
+    ReconciliationResult,
+    ScheduleCommand,
+    ScheduleResult,
     SubmissionRequest,
+    SymbolDiscoveryRequest,
+    SymbolDiscoveryResult,
+)
+from corthena.ui.datasets.models import (
+    DatasetBuild,
+    DatasetBuildRequest,
+    DatasetSaveRequest,
+    DatasetSaveResult,
 )
 from corthena.ui.effects import (
     EffectsRuntime,
@@ -52,6 +73,71 @@ FIXED_CLOCK = datetime(2026, 7, 12, 14, 30, tzinfo=UTC)
 
 
 class Phase7ClientStubs:
+    def save_dataset(
+        self, request: DatasetSaveRequest, cancellation: CancellationSignal
+    ) -> DatasetSaveResult:
+        raise NotImplementedError
+
+    def build_dataset(
+        self, request: DatasetBuildRequest, cancellation: CancellationSignal
+    ) -> DatasetBuild:
+        raise NotImplementedError
+
+    def credential_status(
+        self, request: CredentialRequest, cancellation: CancellationSignal
+    ) -> CredentialResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def save_credential(
+        self, request: CredentialSecretRequest, cancellation: CancellationSignal
+    ) -> CredentialResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def test_credential(
+        self, request: CredentialSecretRequest, cancellation: CancellationSignal
+    ) -> CredentialResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def delete_credential(
+        self, request: CredentialRequest, cancellation: CancellationSignal
+    ) -> CredentialResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def preview_file(
+        self, request: FilePreviewRequest, cancellation: CancellationSignal
+    ) -> FilePreview:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def browse_files(
+        self, request: FileBrowserRequest, cancellation: CancellationSignal
+    ) -> FileBrowserListing:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def discover_symbols(
+        self, request: SymbolDiscoveryRequest, cancellation: CancellationSignal
+    ) -> SymbolDiscoveryResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def submit_file_ingestion(
+        self, plan: IngestionPlan, cancellation: CancellationSignal
+    ) -> IngestionResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def submit_massive_pull(
+        self, plan: IngestionPlan, cancellation: CancellationSignal
+    ) -> IngestionResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def mutate_schedule(
+        self, command: ScheduleCommand, cancellation: CancellationSignal
+    ) -> ScheduleResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
+    def reconcile_data(
+        self, request: ReconciliationRequest, cancellation: CancellationSignal
+    ) -> ReconciliationResult:
+        raise AssertionError("Data ingestion operation is outside this focused test")
+
     def load_phase7(
         self, request: Phase7Request, cancellation: CancellationSignal
     ) -> Phase7Snapshot:
